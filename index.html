@@ -9,7 +9,7 @@
 <meta property="og:type" content="article">
 <meta property="og:title" content="Engineering the Strait — Backup Ports for Merak–Bakauheni">
 <meta property="og:description" content="Optimization + simulation: cutting peak ferry gridlock by 68% for a 3.4x benefit-to-cost ratio. A data narrative by Galih Mahastra Adhikararaksaka, ITS.">
-<meta property="og:url" content="">
+<meta property="og:url" content="https://gmahastra.github.io/engineering-the-strait/">
 <!-- <meta property="og:image" content="https://YOUR-DOMAIN/preview.png"> -->
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Engineering the Strait — Backup Ports for Merak–Bakauheni">
@@ -19,6 +19,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<!-- Lenis: lightweight RAF-driven smooth scrolling -->
+<script src="https://unpkg.com/lenis@1.1.20/dist/lenis.min.js"></script>
 <style>
   :root{
     --paper:#efe9db;
@@ -39,6 +41,29 @@
   }
   *{box-sizing:border-box}
   html{scroll-behavior:smooth}
+
+  /* ---------- LENIS SMOOTH SCROLL ---------- */
+  /* When Lenis is active it drives scroll via RAF, so native smooth-scroll is
+     turned off to stop the two fighting. These classes are toggled by Lenis. */
+  html.lenis,html.lenis body{height:auto}
+  .lenis.lenis-smooth{scroll-behavior:auto !important}
+  .lenis.lenis-smooth [data-lenis-prevent]{overscroll-behavior:contain}
+  .lenis.lenis-stopped{overflow:hidden}
+  .lenis.lenis-smooth iframe{pointer-events:none}
+
+  /* ---------- SCROLL PROGRESS BAR ---------- */
+  .progress{
+    position:fixed;top:0;left:0;height:3px;width:0%;
+    background:linear-gradient(90deg,var(--water),var(--accent));
+    z-index:50;pointer-events:none;
+    transition:width .08s linear;will-change:width;
+  }
+  @media (prefers-reduced-motion:reduce){
+    html{scroll-behavior:auto}
+    .progress{transition:none}
+    .scroll-cue .arrow{animation:none}
+  }
+
   body{
     margin:0;
     background:var(--paper);
@@ -106,6 +131,8 @@
     position:sticky;top:0;height:100vh;
     display:flex;flex-direction:column;justify-content:center;
     padding:3vh 2.4rem;
+    /* promote to its own compositor layer so sticky repaints stay cheap */
+    will-change:transform;transform:translateZ(0);backface-visibility:hidden;
   }
   .viz-inner{
     background:var(--panel);
@@ -197,6 +224,8 @@
 </style>
 </head>
 <body>
+
+<div class="progress" id="progress"></div>
 
 <!-- ===================== HERO ===================== -->
 <header class="hero">
@@ -847,17 +876,74 @@ function activate(step){
   if(RENDER[step]) RENDER[step]();
 }
 
-/* ---------- OBSERVER ---------- */
+/* ---------- OBSERVER ----------
+   A thin focus band in the vertical middle of the viewport decides the active
+   step. Among everything currently touching the band we pick the step whose
+   centre is closest to the viewport centre — this stops the chart flickering
+   between two steps when they briefly overlap during a fast scroll. */
+const steps = Array.from(document.querySelectorAll(".step"));
+const visible = new Set();
+
+function pickActive(){
+  if(!visible.size) return;
+  const mid = window.innerHeight / 2;
+  let best=null, bestDist=Infinity;
+  visible.forEach(el=>{
+    const r = el.getBoundingClientRect();
+    const dist = Math.abs((r.top + r.bottom)/2 - mid);
+    if(dist < bestDist){ bestDist = dist; best = el; }
+  });
+  if(best) activate(best.dataset.step);
+}
+
 const obs = new IntersectionObserver((entries)=>{
-  entries.forEach(e=>{ if(e.isIntersecting) activate(e.target.dataset.step); });
+  entries.forEach(e=>{
+    if(e.isIntersecting) visible.add(e.target);
+    else visible.delete(e.target);
+  });
+  pickActive();
 },{rootMargin:"-45% 0px -45% 0px", threshold:0});
 
-document.querySelectorAll(".step").forEach(s=>obs.observe(s));
+steps.forEach(s=>obs.observe(s));
+
+/* ---------- SMOOTH SCROLL (Lenis) + PROGRESS BAR ---------- */
+const progressEl = document.getElementById("progress");
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const setProgress = p => { progressEl.style.width = (Math.max(0,Math.min(1,p))*100).toFixed(2)+"%"; };
+
+if(window.Lenis && !reduceMotion){
+  const lenis = new Lenis({
+    duration: 1.05,                                          // momentum length (s)
+    easing: t => Math.min(1, 1.001 - Math.pow(2, -10 * t)),  // expo-out, natural settle
+    smoothWheel: true,
+    wheelMultiplier: 0.9,                                    // slightly calmer wheel
+    touchMultiplier: 1.4,
+  });
+  lenis.on("scroll", ({ progress }) => setProgress(progress));
+  function raf(time){ lenis.raf(time); requestAnimationFrame(raf); }  // one frame-aligned loop
+  requestAnimationFrame(raf);
+
+  // Make the hero "Scroll" cue glide into the story.
+  const cue = document.querySelector(".scroll-cue");
+  if(cue){
+    cue.style.cursor = "pointer";
+    cue.addEventListener("click", () => lenis.scrollTo("#scrolly-1", { offset:-40, duration:1.4 }));
+  }
+} else {
+  // Reduced-motion / no-Lenis fallback: native scroll, progress via passive listener.
+  const onScroll = () => {
+    const el = document.documentElement;
+    const max = el.scrollHeight - el.clientHeight;
+    setProgress(max > 0 ? el.scrollTop / max : 0);
+  };
+  window.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+}
 
 /* initial render + resize redraw */
 window.addEventListener("load",()=>{ activate("hook"); });
 let rt;
-window.addEventListener("resize",()=>{ clearTimeout(rt); rt=setTimeout(()=>{ const c=current; current=null; activate(c); },180); });
+window.addEventListener("resize",()=>{ clearTimeout(rt); rt=setTimeout(()=>{ const c=current; current=null; activate(c); pickActive(); },180); });
 </script>
 </body>
 </html>
