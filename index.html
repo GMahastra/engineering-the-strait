@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Engineering the Strait — Backup Ports for Merak–Bakauheni at Peak Load</title>
+<meta name="description" content="An optimization-and-simulation data story: how a five-day backup-port plan cuts Eid ferry gridlock on the Merak–Bakauheni crossing by two-thirds, for a 3.4x return.">
+<!-- Social / LinkedIn preview. After deploying, set og:url to your live link, and (optional) add an og:image PNG in the same folder. -->
+<meta property="og:type" content="article">
+<meta property="og:title" content="Engineering the Strait — Backup Ports for Merak–Bakauheni">
+<meta property="og:description" content="Optimization + simulation: cutting peak ferry gridlock by 68% for a 3.4x benefit-to-cost ratio. A data narrative by Galih Mahastra Adhikararaksaka, ITS.">
+<meta property="og:url" content="">
+<!-- <meta property="og:image" content="https://YOUR-DOMAIN/preview.png"> -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Engineering the Strait — Backup Ports for Merak–Bakauheni">
+<meta name="twitter:description" content="Optimization + simulation: cutting peak ferry gridlock by 68% for a 3.4x benefit-to-cost ratio.">
+<meta name="author" content="Galih Mahastra Adhikararaksaka">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<style>
+  :root{
+    --paper:#efe9db;
+    --paper-2:#e7e0cf;
+    --panel:#f4efe4;
+    --ink:#17263b;
+    --ink-soft:#3c4a5c;
+    --muted:#8b8472;
+    --line:#d4cbb4;
+    --water:#1b6e7d;
+    --water-deep:#11505c;
+    --good:#2f7d5b;
+    --warn:#cf9a3a;
+    --danger:#bf462f;
+    --danger-soft:#d98b78;
+    --accent:#c4622d;
+    --maxw:1280px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:"Instrument Sans",ui-sans-serif,sans-serif;
+    font-size:18px;
+    line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+    background-image:
+      radial-gradient(circle at 18% 12%, rgba(27,110,125,.05), transparent 45%),
+      radial-gradient(circle at 85% 70%, rgba(191,70,47,.04), transparent 40%);
+  }
+  .mono{font-family:"Spline Sans Mono",ui-monospace,monospace;font-feature-settings:"tnum" 1}
+  h1,h2,h3{font-family:"Fraunces",Georgia,serif;font-weight:600;line-height:1.08;letter-spacing:-.01em}
+
+  /* ---------- HERO ---------- */
+  .hero{
+    min-height:100vh;
+    display:flex;flex-direction:column;justify-content:center;
+    padding:6vh 7vw;
+    position:relative;overflow:hidden;
+    border-bottom:1px solid var(--line);
+  }
+  .hero-grid{position:absolute;inset:0;opacity:.5;pointer-events:none}
+  .kicker{
+    font-family:"Spline Sans Mono",monospace;
+    font-size:.78rem;letter-spacing:.32em;text-transform:uppercase;
+    color:var(--water-deep);margin-bottom:1.6rem;
+  }
+  .hero h1{
+    font-size:clamp(2.4rem,6.4vw,5.4rem);
+    margin:0 0 1.4rem;max-width:16ch;
+  }
+  .hero h1 em{font-style:italic;color:var(--accent)}
+  .hero .lede{
+    font-size:clamp(1.05rem,1.6vw,1.32rem);
+    max-width:54ch;color:var(--ink-soft);margin:0 0 2.2rem;
+  }
+  .byline{
+    font-family:"Spline Sans Mono",monospace;font-size:.82rem;
+    color:var(--muted);letter-spacing:.04em;line-height:1.9;
+  }
+  .byline strong{color:var(--ink);font-weight:600}
+  .scroll-cue{
+    position:absolute;bottom:3vh;left:50%;transform:translateX(-50%);
+    font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.25em;
+    text-transform:uppercase;color:var(--muted);
+    display:flex;flex-direction:column;align-items:center;gap:.5rem;
+  }
+  .scroll-cue .arrow{width:1px;height:30px;background:var(--muted);position:relative;animation:drop 2s ease-in-out infinite}
+  @keyframes drop{0%,100%{opacity:.3;transform:scaleY(.6)}50%{opacity:1;transform:scaleY(1)}}
+
+  /* ---------- SCROLLY LAYOUT ---------- */
+  .scrolly{
+    display:grid;
+    grid-template-columns:minmax(360px,1fr) 1.25fr;
+    gap:0;
+    max-width:var(--maxw);
+    margin:0 auto;
+    position:relative;
+  }
+  .narrative{padding:0 clamp(1.4rem,3vw,3.5rem)}
+  .sticky-wrap{position:relative}
+  .viz{
+    position:sticky;top:0;height:100vh;
+    display:flex;flex-direction:column;justify-content:center;
+    padding:3vh 2.4rem;
+  }
+  .viz-inner{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:4px;
+    height:84vh;
+    position:relative;overflow:hidden;
+    box-shadow:0 1px 0 rgba(23,38,59,.04), 0 24px 48px -32px rgba(23,38,59,.4);
+  }
+  .viz-inner::before{
+    content:"";position:absolute;inset:0;pointer-events:none;opacity:.5;
+    background-image:repeating-linear-gradient(0deg,transparent 0 38px,rgba(27,110,125,.04) 38px 39px);
+  }
+  .viz-tag{
+    position:absolute;top:14px;left:16px;z-index:3;
+    font-family:"Spline Sans Mono",monospace;font-size:.68rem;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--muted);
+  }
+  svg.chart{width:100%;height:100%;display:block;position:relative;z-index:2}
+
+  .step{
+    min-height:86vh;
+    display:flex;flex-direction:column;justify-content:center;
+    padding:5vh 0;
+  }
+  .step:first-child{padding-top:14vh}
+  .step:last-child{min-height:96vh}
+  .step .num{
+    font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.2em;
+    color:var(--accent);margin-bottom:1rem;text-transform:uppercase;
+  }
+  .step h2{font-size:clamp(1.6rem,2.6vw,2.4rem);margin:0 0 1.1rem}
+  .step p{margin:0 0 1.1rem;color:var(--ink-soft)}
+  .step p.big-num{
+    font-family:"Fraunces",serif;font-size:clamp(2.2rem,4vw,3.2rem);
+    color:var(--ink);line-height:1;margin:.4rem 0 .8rem;font-weight:600;
+  }
+  .step p.big-num span{color:var(--accent)}
+  .step .note{
+    font-size:.92rem;color:var(--muted);border-left:2px solid var(--line);
+    padding-left:1rem;margin-top:1.4rem;
+  }
+  .pill{
+    display:inline-block;font-family:"Spline Sans Mono",monospace;font-size:.74rem;
+    padding:.18em .6em;border-radius:3px;letter-spacing:.02em;
+    background:var(--paper-2);border:1px solid var(--line);color:var(--ink-soft);
+  }
+  .pill.danger{background:rgba(191,70,47,.1);border-color:var(--danger-soft);color:var(--danger)}
+  .pill.good{background:rgba(47,125,91,.12);border-color:#9cc4ad;color:var(--good)}
+  .pill.water{background:rgba(27,110,125,.1);border-color:#9ec6cd;color:var(--water-deep)}
+
+  /* section intro full-width breaks */
+  .interlude{
+    max-width:760px;margin:0 auto;padding:16vh 7vw;text-align:center;
+  }
+  .interlude .kicker{color:var(--accent)}
+  .interlude h2{font-size:clamp(1.9rem,3.6vw,3rem);margin:0 0 1rem}
+  .interlude p{color:var(--ink-soft);font-size:1.12rem;max-width:56ch;margin:0 auto}
+
+  footer{
+    border-top:1px solid var(--line);
+    padding:8vh 7vw 10vh;max-width:var(--maxw);margin:0 auto;
+  }
+  footer h2{font-size:clamp(1.6rem,3vw,2.4rem);max-width:20ch;margin:0 0 1.2rem}
+  footer p{color:var(--ink-soft);max-width:62ch}
+  .footer-meta{
+    margin-top:3rem;font-family:"Spline Sans Mono",monospace;font-size:.78rem;
+    color:var(--muted);line-height:2;border-top:1px dashed var(--line);padding-top:2rem;
+  }
+  .footer-meta strong{color:var(--ink)}
+
+  /* D3 text defaults */
+  text{font-family:"Spline Sans Mono",monospace;fill:var(--ink)}
+  .ax-label{font-size:11px;fill:var(--muted);letter-spacing:.05em}
+  .val-label{font-size:12px;font-weight:600}
+  .title-in-svg{font-family:"Fraunces",serif;font-size:15px;fill:var(--ink);font-weight:600}
+
+  @media (max-width:900px){
+    body{font-size:16px}
+    .scrolly{grid-template-columns:1fr}
+    .sticky-wrap{order:-1}
+    .viz{height:auto;padding:0}
+    .viz-inner{height:52vh;border-radius:0;border-left:none;border-right:none}
+    .viz{position:sticky;top:0;z-index:5;background:var(--paper)}
+    .narrative{padding:0 6vw}
+    .step{min-height:74vh;padding:6vh 0}
+    .step:first-child{padding-top:6vh}
+  }
+</style>
+</head>
+<body>
+
+<!-- ===================== HERO ===================== -->
+<header class="hero">
+  <svg class="hero-grid" preserveAspectRatio="none" viewBox="0 0 100 100">
+    <defs>
+      <pattern id="contour" width="100" height="22" patternUnits="userSpaceOnUse">
+        <path d="M0 11 Q 25 2 50 11 T 100 11" fill="none" stroke="#1b6e7d" stroke-width="0.18" opacity="0.5"/>
+      </pattern>
+    </defs>
+    <rect width="100" height="100" fill="url(#contour)"/>
+  </svg>
+  <div class="kicker">Operations Research · Maritime Logistics · ITS 2024</div>
+  <h1>Engineering the <em>Strait</em></h1>
+  <p class="lede">Every Eid, the Merak–Bakauheni ferry crossing — Indonesia's busiest, just 15 nautical miles of water between Java and Sumatra — buckles under demand it cannot physically carry. This is how an optimization-and-simulation model turns that gridlock into a five-day backup-port plan, and what it costs to keep traffic moving.</p>
+  <div class="byline">
+    A data narrative from the final project of<br>
+    <strong>Galih Mahastra Adhikararaksaka</strong> · Marine Transportation Engineering, ITS<br>
+    Advisors: Ir. Tri Achmadi, Ph.D. · Christino Boyke S. P., Ph.D.
+  </div>
+  <div class="scroll-cue"><span>Scroll</span><span class="arrow"></span></div>
+</header>
+
+<!-- ===================== SCROLLY 1: THE PROBLEM ===================== -->
+<section class="scrolly" id="scrolly-1">
+  <div class="narrative">
+
+    <div class="step" data-step="hook">
+      <div class="num">01 / The chokepoint</div>
+      <h2>A 15-mile crossing the whole archipelago leans on</h2>
+      <p>The Merak–Bakauheni route is the land bridge between Java and Sumatra. In 2024 it ran <span class="pill water">65 vessels</span> and roughly <span class="pill water">128 departures a day</span>. On an ordinary day the Merak terminal sits at about <strong>46% of capacity</strong> — comfortable.</p>
+      <p>Then comes Lebaran.</p>
+    </div>
+
+    <div class="step" data-step="vc">
+      <div class="num">02 / Anatomy of a peak</div>
+      <h2>Demand doesn't just rise. It breaks the ceiling.</h2>
+      <p>Projected for the 2025 Eid exodus, daily load climbs from H-7 and crosses the Ministry of Transport's safe operating line — a <strong>Vehicle-to-Capacity (V/C) ratio of 0.80</strong> — on H-5. By H-2 it hits <strong>115%</strong>: more vehicles want to cross than the port can physically clear in a day.</p>
+      <p>Everything above the dashed line is a queue that spills into tomorrow.</p>
+      <div class="note">V/C ratio = projected vehicle load (in passenger-car units, SMP) ÷ daily terminal capacity. Above 0.80 is officially "over standard."</div>
+    </div>
+
+    <div class="step" data-step="mix">
+      <div class="num">03 / What's actually in the queue</div>
+      <h2>Cars are the weight. Motorcycles are the count.</h2>
+      <p>The 27,964-SMP peak hides a split personality. By <em>volume of load</em>, passenger cars (Class IV) are roughly three-quarters of the problem. By <em>sheer number of units</em>, motorcycles (Class II) dominate — over 16,000 of them, each taking little space but all needing a slot.</p>
+      <p>That distinction is the hinge of the whole solution: you can't treat every vehicle the same.</p>
+    </div>
+
+  </div>
+  <div class="sticky-wrap">
+    <div class="viz">
+      <div class="viz-inner">
+        <div class="viz-tag" id="tag-1">Fig · The crossing</div>
+        <svg class="chart" id="chart-1"></svg>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== INTERLUDE: METHOD ===================== -->
+<section class="interlude">
+  <div class="kicker">The Approach</div>
+  <h2>Two engines, one objective</h2>
+  <p>The policy already existed — since 2022 the Ministry has diverted overflow to "backup ports." But it was set by intuition: long jams persisted, and shipping firms were forced onto longer routes with no compensation. The question this project answers is sharper: <em>which</em> ports, for <em>which</em> vehicles, with <em>which</em> ships — at minimum cost to the state and minimum pain to the public.</p>
+</section>
+
+<!-- ===================== SCROLLY 2: METHOD + SOLUTION ===================== -->
+<section class="scrolly" id="scrolly-2">
+  <div class="narrative">
+
+    <div class="step" data-step="method">
+      <div class="num">04 / The model</div>
+      <h2>Optimize the plan, then simulate the consequence</h2>
+      <p>An <strong>optimization model</strong> (solved with an evolutionary solver) chooses the cheapest feasible plan. Its objective: minimize total compensation cost. Its levers: which port-pair schemes to activate, which vehicle classes to divert, and which vessels to assign. Its hard constraint: keep <em>every</em> port's V/C ratio at or below 0.80.</p>
+      <p>A separate <strong>queueing simulation</strong> — Poisson arrivals feeding a waiting-time model — then measures what that plan actually does to the queue, before versus after.</p>
+    </div>
+
+    <div class="step" data-step="ports">
+      <div class="num">05 / The candidates</div>
+      <h2>Five ports auditioned. Each had to pass.</h2>
+      <p>Nearby terminals were screened against a compatibility checklist — berth type, draft, yard area, road access. Five viable candidates emerged, combined into five operating schemes (A–E), each a specific origin→destination pairing for a specific kind of vehicle.</p>
+      <p>Not all would make the final cut. The model decides.</p>
+    </div>
+
+    <div class="step" data-step="solution">
+      <div class="num">06 / The optimized plan</div>
+      <h2>Split the load three ways, and Merak breathes</h2>
+      <p>The solver keeps passenger cars (IV, VA, VII) at Merak but adds capacity through <strong>Scheme A</strong> (Indah Kiat). It sends motorcycles and one truck class (II, VIA) to <strong>Scheme D</strong> (Ciwandan), and the heaviest cargo (VB, VIB, VIII, IX) to <strong>Scheme E</strong> (Bandar Bakau Jaya).</p>
+      <p>Merak's V/C ratio falls from a gridlocked <strong>1.15</strong> to <strong>0.80</strong>. Every backup port lands under the line too.</p>
+      <div class="note">11 existing RoRo vessels reassigned — 4 to Scheme A, 7 to Scheme D — plus 6 of Bandar Bakau Jaya's own LCT craft on Scheme E. No new ships chartered.</div>
+    </div>
+
+  </div>
+  <div class="sticky-wrap">
+    <div class="viz">
+      <div class="viz-inner">
+        <div class="viz-tag" id="tag-2">Fig · The model</div>
+        <svg class="chart" id="chart-2"></svg>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== INTERLUDE: THE LEDGER ===================== -->
+<section class="interlude">
+  <div class="kicker">The Ledger</div>
+  <h2>What it costs, and what it buys back</h2>
+  <p>A plan that keeps every port under capacity is only worth running if the public gains more than the state spends. So the model puts both sides of the trade on the same scale: rupiah out in compensation, rupiah saved in avoided gridlock.</p>
+</section>
+
+<!-- ===================== SCROLLY 3: COST + BENEFIT ===================== -->
+<section class="scrolly" id="scrolly-3">
+  <div class="narrative">
+
+    <div class="step" data-step="comp">
+      <div class="num">07 / The bill</div>
+      <h2>Rp 17.8 billion to run it for five days</h2>
+      <p class="big-num">Rp <span>17.77</span> B</p>
+      <p>Compensation splits in a revealing way: <strong>83%</strong> goes to shipping companies (fuel for diverted vessels, plus payments to ships displaced by the reshuffle) and only <strong>17%</strong> to port operators.</p>
+      <p>Scheme E costs the state nothing — the Bandar Bakau Jaya fare is already cheaper than the regular crossing, so no top-up is owed.</p>
+    </div>
+
+    <div class="step" data-step="wait">
+      <div class="num">08 / The relief</div>
+      <h2>From a five-hour wait to under two</h2>
+      <p>This is the payoff the public feels. On the worst day, average waiting time falls from <strong>5h 17m to 1h 58m</strong>. The true pre-policy maximum — 6h 11m on H-1, swollen by yesterday's spillover — drops to <strong>1h 45m</strong>.</p>
+      <p>Even on Eid day itself, after operations end, the relief lingers: there's no backlog left to clear. Average reduction across the peak: <strong>68%</strong>.</p>
+    </div>
+
+    <div class="step" data-step="bcr">
+      <div class="num">09 / The verdict</div>
+      <h2>Every rupiah spent saves the public 3.4</h2>
+      <p>Avoided gridlock — wasted fuel plus lost travel time — comes to <strong>Rp 59.6 billion</strong>. Against the Rp 17.8 billion price tag, that's a <strong>benefit-to-cost ratio of 3.4</strong>.</p>
+      <p class="big-num">BCR = <span>3.4×</span></p>
+      <p>Most of that value is indirect: the hours people don't lose sitting in line (BCR 2.73) far outweigh the fuel they don't burn (BCR 0.63).</p>
+    </div>
+
+  </div>
+  <div class="sticky-wrap">
+    <div class="viz">
+      <div class="viz-inner">
+        <div class="viz-tag" id="tag-3">Fig · The ledger</div>
+        <svg class="chart" id="chart-3"></svg>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== INTERLUDE: THE LIMIT ===================== -->
+<section class="interlude">
+  <div class="kicker">The Honest Part</div>
+  <h2>A bridge, not a destination</h2>
+  <p>The most useful finding isn't the savings. It's the expiry date.</p>
+</section>
+
+<!-- ===================== SCROLLY 4: SENSITIVITY + DURABILITY ===================== -->
+<section class="scrolly" id="scrolly-4">
+  <div class="narrative">
+
+    <div class="step" data-step="sens">
+      <div class="num">10 / The lever</div>
+      <h2>How hard you push the standard sets the price</h2>
+      <p>The single biggest cost driver isn't the ports — it's how strictly you hold the V/C line. Insist on 0.75 and the plan must reach all the way to distant Pelabuhan Panjang with chartered ships: cost balloons to <strong>Rp 66 billion</strong>. Relax to 0.95 and it shrinks to <strong>Rp 3 billion</strong>.</p>
+      <p>The chosen 0.80 sits at a deliberate knee in the curve: safe, but not ruinously so.</p>
+    </div>
+
+    <div class="step" data-step="dura">
+      <div class="num">11 / The expiry</div>
+      <h2>This plan works… until roughly 2028</h2>
+      <p>Run the same model against future demand and the cost climbs relentlessly. Through 2027 the 0.80 standard still holds — but only by chartering more and more ships. By 2028 it can no longer hold 0.80 at all; the standard has to be loosened year after year.</p>
+      <p>By <strong>2033</strong>, Class IV demand alone exceeds Merak's capacity. No clever diversion fixes that.</p>
+      <div class="note">The backup-port policy is a high-return stopgap that buys time — not a substitute for new berth infrastructure. Naming that ceiling is the point.</div>
+    </div>
+
+  </div>
+  <div class="sticky-wrap">
+    <div class="viz">
+      <div class="viz-inner">
+        <div class="viz-tag" id="tag-4">Fig · Durability</div>
+        <svg class="chart" id="chart-4"></svg>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== FOOTER ===================== -->
+<footer>
+  <h2>The takeaway</h2>
+  <p>A backup-port policy, properly optimized, is one of the cheapest interventions available to a congested ferry system: Rp 17.8 billion to cut peak waiting times by two-thirds and return Rp 3.4 of public value per rupiah spent. But its returns decay fast. Treated as a bridge to capacity expansion it is excellent value; treated as a permanent answer, it quietly fails within a decade.</p>
+  <div class="footer-meta">
+    <strong>Source</strong> — "Alternative Ports Selection Analysis for the Merak–Bakauheni Crossing Route During Peak Load Conditions," final project, Dept. of Marine Transportation Engineering, Institut Teknologi Sepuluh Nopember (ITS), 2024.<br>
+    <strong>Data</strong> — PT ASDP Indonesia Ferry, GAPASDAP, PT Dharma Lautan Utama (reprocessed). Figures are 2025 Eid projections.<br>
+    <strong>Note</strong> — Built as a scrollytelling explainer; not all model detail (full scheme tables, facility layouts) is shown.
+  </div>
+</footer>
+
+<script>
+"use strict";
+const C = {
+  ink:"#17263b", inkSoft:"#3c4a5c", muted:"#8b8472", line:"#d4cbb4",
+  water:"#1b6e7d", waterDeep:"#11505c", good:"#2f7d5b", warn:"#cf9a3a",
+  danger:"#bf462f", dangerSoft:"#d98b78", accent:"#c4622d", paper2:"#e7e0cf"
+};
+const fmtPct = d => d.toFixed(0)+"%";
+const rp = v => "Rp "+v.toLocaleString("en-US");
+
+/* ---------- DATA ---------- */
+const VC = [
+  {d:"H-7",day:"Mon",smp:15724,vc:64.7},
+  {d:"H-6",day:"Tue",smp:18262,vc:75.2},
+  {d:"H-5",day:"Wed",smp:21402,vc:88.1},
+  {d:"H-4",day:"Thu",smp:23017,vc:94.7},
+  {d:"H-3",day:"Fri",smp:24187,vc:99.6},
+  {d:"H-2",day:"Sat",smp:27964,vc:115.1},
+  {d:"H-1",day:"Sun",smp:21882,vc:90.1},
+  {d:"H", day:"Mon",smp:10157,vc:41.8},
+];
+const SMPFAC = {II:0.16,IV:1.0,VA:1.62,VB:1.64,VIA:2.56,VIB:2.57,VII:3.74,VIII:4.32,IX:4.92};
+const UNITS = {II:16530,IV:21180,VA:198,VB:781,VIA:706,VIB:96,VII:107,VIII:12,IX:11};
+const MIX = Object.keys(UNITS).map(k=>({cls:k,units:UNITS[k],smp:Math.round(UNITS[k]*SMPFAC[k])}))
+              .sort((a,b)=>b.smp-a.smp);
+
+const SCHEMES = [
+  {id:"A",port:"Indah Kiat",dest:"Bakauheni",classes:"IV · VA · VII",vc:0.799,ships:4,kind:"car",comp:7622853726},
+  {id:"D",port:"Ciwandan",dest:"Bakauheni",classes:"II · VIA",vc:0.797,ships:7,kind:"moto",comp:10146901882},
+  {id:"E",port:"Bandar Bakau Jaya",dest:"BBJ Muara Pilu",classes:"VB · VIB · VIII · IX",vc:0.723,ships:6,kind:"cargo",comp:0},
+];
+
+const WAIT = [
+  {d:"H-7",before:30.95,after:null,op:false},
+  {d:"H-6",before:64.2, after:null,op:false},
+  {d:"H-5",before:121.2,after:34.2, op:true,red:72},
+  {d:"H-4",before:171.0,after:63.6, op:true,red:63},
+  {d:"H-3",before:202.8,after:82.8, op:true,red:59},
+  {d:"H-2",before:317.4,after:118.8,op:true,red:63},
+  {d:"H-1",before:371.4,after:105.6,op:true,red:72},
+  {d:"H",  before:125.4,after:26.4, op:false,red:79},
+];
+const fmtMin = m => { const h=Math.floor(m/60), mm=Math.round(m%60); return (h?h+"h ":"")+mm+"m"; };
+
+const SENS = [
+  {vc:0.75,cost:66.07},{vc:0.80,cost:17.77},{vc:0.85,cost:16.05},
+  {vc:0.90,cost:10.24},{vc:0.95,cost:3.19},{vc:1.00,cost:1.50},
+];
+const DURA = [
+  {y:2025,cost:17.76,vc:0.8, ok:true},
+  {y:2026,cost:41.39,vc:0.8, ok:true},
+  {y:2027,cost:60.36,vc:0.8, ok:true},
+  {y:2028,cost:75.34,vc:0.85,ok:true},
+  {y:2029,cost:74.06,vc:0.9, ok:true},
+  {y:2030,cost:87.73,vc:0.9, ok:true},
+  {y:2031,cost:83.80,vc:0.95,ok:true},
+  {y:2032,cost:79.57,vc:1.0, ok:true},
+  {y:2033,cost:null, vc:null,ok:false},
+];
+
+/* ---------- RENDER HELPERS ---------- */
+function dims(svg){
+  const el = svg.node().parentNode;
+  const r = el.getBoundingClientRect();
+  return {w:r.width, h:r.height};
+}
+function freshG(svgId){
+  const svg = d3.select("#"+svgId);
+  svg.selectAll("*").interrupt();
+  svg.selectAll("*").remove();
+  const {w,h} = dims(svg);
+  svg.attr("viewBox",`0 0 ${w} ${h}`);
+  return {svg, g:svg.append("g"), w, h};
+}
+
+/* ===== CHART 1 dispatcher (problem) ===== */
+function c1_hook(){
+  const {svg,g,w,h}=freshG("chart-1");
+  const cx=w/2;
+  // Sumatra (top), Java (bottom)
+  g.append("path").attr("d",`M0 ${h*0.16} Q ${w*0.4} ${h*0.05} ${w} ${h*0.20} L ${w} 0 L 0 0 Z`)
+    .attr("fill",C.paper2).attr("stroke",C.line);
+  g.append("path").attr("d",`M0 ${h*0.86} Q ${w*0.55} ${h*0.98} ${w} ${h*0.82} L ${w} ${h} L 0 ${h} Z`)
+    .attr("fill",C.paper2).attr("stroke",C.line);
+  g.append("text").attr("x",w*0.1).attr("y",h*0.1).attr("class","title-in-svg").text("SUMATRA");
+  g.append("text").attr("x",w*0.1).attr("y",h*0.94).attr("class","title-in-svg").text("JAVA");
+  // ports
+  const pT={x:cx,y:h*0.22}, pB={x:cx,y:h*0.80};
+  // crossing line
+  const line=g.append("line").attr("x1",pB.x).attr("y1",pB.y).attr("x2",pB.x).attr("y2",pB.y)
+    .attr("stroke",C.water).attr("stroke-width",2).attr("stroke-dasharray","6 5");
+  line.transition().duration(900).attr("x2",pT.x).attr("y2",pT.y);
+  [["Bakauheni",pT],["Merak",pB]].forEach(([n,p])=>{
+    g.append("circle").attr("cx",p.x).attr("cy",p.y).attr("r",0).attr("fill",C.accent)
+      .transition().delay(300).duration(500).attr("r",6);
+    g.append("text").attr("x",p.x+12).attr("y",p.y+4).attr("class","val-label").attr("fill",C.ink).text(n);
+  });
+  g.append("text").attr("x",cx+10).attr("y",h*0.51).attr("class","ax-label").attr("fill",C.waterDeep)
+    .text("15 nautical miles").style("opacity",0).transition().delay(900).duration(500).style("opacity",1);
+  // ferry glyph animating
+  const ferry=g.append("rect").attr("width",16).attr("height",9).attr("rx",2).attr("fill",C.ink)
+    .attr("x",pB.x-8).attr("y",pB.y);
+  function sail(){ ferry.attr("y",pB.y).transition().duration(2600).ease(d3.easeSinInOut).attr("y",pT.y)
+    .transition().duration(2600).ease(d3.easeSinInOut).attr("y",pB.y).on("end",sail); }
+  sail();
+  g.append("text").attr("x",w*0.5).attr("y",h*0.62).attr("text-anchor","middle").attr("class","ax-label")
+    .text("Java ↔ Sumatra · busiest crossing in Indonesia");
+  d3.select("#tag-1").text("Fig 01 · The crossing");
+}
+
+function c1_vc(){
+  const {svg,g,w,h}=freshG("chart-1");
+  const m={t:46,r:24,b:46,l:44};
+  const iw=w-m.l-m.r, ih=h-m.t-m.b;
+  const gg=g.attr("transform",`translate(${m.l},${m.t})`);
+  const x=d3.scaleBand().domain(VC.map(d=>d.d)).range([0,iw]).padding(0.28);
+  const y=d3.scaleLinear().domain([0,125]).range([ih,0]);
+  // threshold band (danger above 80)
+  gg.append("rect").attr("x",0).attr("y",y(125)).attr("width",iw).attr("height",y(80)-y(125))
+    .attr("fill",C.danger).attr("opacity",0.06);
+  // gridlines
+  [0,40,80,120].forEach(t=>{
+    gg.append("line").attr("x1",0).attr("x2",iw).attr("y1",y(t)).attr("y2",y(t))
+      .attr("stroke",C.line).attr("stroke-width",t===0?1.2:0.7);
+    gg.append("text").attr("x",-8).attr("y",y(t)+3).attr("text-anchor","end").attr("class","ax-label").text(t+"%");
+  });
+  // threshold line 80
+  gg.append("line").attr("x1",0).attr("x2",iw).attr("y1",y(80)).attr("y2",y(80))
+    .attr("stroke",C.danger).attr("stroke-width",1.4).attr("stroke-dasharray","5 4");
+  gg.append("text").attr("x",iw).attr("y",y(80)-7).attr("text-anchor","end").attr("class","ax-label")
+    .attr("fill",C.danger).text("0.80 safe limit");
+  // bars
+  gg.selectAll(".bar").data(VC).enter().append("rect")
+    .attr("x",d=>x(d.d)).attr("width",x.bandwidth())
+    .attr("y",ih).attr("height",0)
+    .attr("fill",d=>d.vc>80?C.danger:C.water)
+    .attr("opacity",d=>d.vc>80?0.92:0.78)
+    .transition().duration(700).delay((d,i)=>i*70)
+    .attr("y",d=>y(d.vc)).attr("height",d=>ih-y(d.vc));
+  // labels
+  gg.selectAll(".bl").data(VC).enter().append("text")
+    .attr("x",d=>x(d.d)+x.bandwidth()/2).attr("y",d=>y(d.vc)-6).attr("text-anchor","middle")
+    .attr("class","val-label").attr("fill",d=>d.vc>80?C.danger:C.waterDeep)
+    .style("opacity",0).text(d=>fmtPct(d.vc))
+    .transition().delay((d,i)=>i*70+400).duration(300).style("opacity",1);
+  // x axis
+  gg.selectAll(".xl").data(VC).enter().append("text")
+    .attr("x",d=>x(d.d)+x.bandwidth()/2).attr("y",ih+18).attr("text-anchor","middle")
+    .attr("class","ax-label").text(d=>d.d);
+  d3.select("#tag-1").text("Fig 02 · Daily V/C ratio, 2025 Eid projection");
+}
+
+function c1_mix(){
+  const {svg,g,w,h}=freshG("chart-1");
+  const m={t:54,r:120,b:40,l:54};
+  const iw=w-m.l-m.r, ih=h-m.t-m.b;
+  const gg=g.attr("transform",`translate(${m.l},${m.t})`);
+  const data=MIX;
+  const y=d3.scaleBand().domain(data.map(d=>d.cls)).range([0,ih]).padding(0.24);
+  const x=d3.scaleLinear().domain([0,d3.max(data,d=>d.smp)]).range([0,iw]);
+  gg.append("text").attr("x",0).attr("y",-22).attr("class","title-in-svg").text("Peak load by class — SMP (load units)");
+  gg.selectAll(".bar").data(data).enter().append("rect")
+    .attr("y",d=>y(d.cls)).attr("height",y.bandwidth()).attr("x",0).attr("width",0)
+    .attr("fill",d=>d.cls==="IV"?C.accent:(d.cls==="II"?C.water:C.inkSoft))
+    .attr("opacity",d=>(d.cls==="IV"||d.cls==="II")?0.92:0.55)
+    .transition().duration(700).delay((d,i)=>i*55).attr("width",d=>x(d.smp));
+  gg.selectAll(".cl").data(data).enter().append("text")
+    .attr("x",-8).attr("y",d=>y(d.cls)+y.bandwidth()/2+4).attr("text-anchor","end")
+    .attr("class","ax-label").text(d=>"Gol "+d.cls);
+  gg.selectAll(".vl").data(data).enter().append("text")
+    .attr("x",d=>x(d.smp)+8).attr("y",d=>y(d.cls)+y.bandwidth()/2+4)
+    .attr("class","val-label").attr("fill",C.ink).style("opacity",0)
+    .text(d=>d.smp.toLocaleString()+(d.cls==="II"?" ("+d.units.toLocaleString()+" units)":""))
+    .transition().delay((d,i)=>i*55+350).duration(300).style("opacity",1);
+  d3.select("#tag-1").text("Fig 03 · Composition of the 27,964-SMP peak");
+}
+
+/* ===== CHART 2 dispatcher (method/solution) ===== */
+function c2_method(){
+  const {svg,g,w,h}=freshG("chart-2");
+  const cx=w/2;
+  function box(x,y,bw,bh,fill,stroke){return g.append("rect").attr("x",x).attr("y",y).attr("width",bw).attr("height",bh).attr("rx",4).attr("fill",fill).attr("stroke",stroke).attr("stroke-width",1.2);}
+  function lbl(x,y,t,cls,fill){return g.append("text").attr("x",x).attr("y",y).attr("text-anchor","middle").attr("class",cls||"val-label").attr("fill",fill||C.ink).text(t);}
+  const bw=Math.min(280,w*0.62), bx=cx-bw/2;
+  // Optimization box
+  box(bx,h*0.10,bw,h*0.30,"rgba(196,98,45,0.08)",C.accent).style("opacity",0).transition().duration(500).style("opacity",1);
+  lbl(cx,h*0.16,"OPTIMIZATION","title-in-svg",C.accent);
+  lbl(cx,h*0.225,"minimize  Σ compensation cost","ax-label",C.ink);
+  lbl(cx,h*0.275,"choose: schemes · classes · vessels","ax-label",C.inkSoft);
+  lbl(cx,h*0.345,"subject to:  every port V/C ≤ 0.80","val-label",C.danger);
+  // arrow
+  g.append("line").attr("x1",cx).attr("y1",h*0.40).attr("x2",cx).attr("y2",h*0.40)
+   .attr("stroke",C.muted).attr("stroke-width",1.5).attr("marker-end","")
+   .transition().delay(500).duration(400).attr("y2",h*0.56);
+  lbl(cx+92,h*0.49,"feeds plan →","ax-label",C.muted);
+  // Simulation box
+  box(bx,h*0.56,bw,h*0.30,"rgba(27,110,125,0.08)",C.water).style("opacity",0).transition().delay(600).duration(500).style("opacity",1);
+  lbl(cx,h*0.62,"QUEUE SIMULATION","title-in-svg",C.waterDeep);
+  lbl(cx,h*0.685,"Poisson arrivals → waiting time","ax-label",C.ink);
+  lbl(cx,h*0.735,"measures: before vs after","ax-label",C.inkSoft);
+  lbl(cx,h*0.805,"output:  public cost & wait time","val-label",C.good);
+  d3.select("#tag-2").text("Fig 04 · The two-engine model");
+}
+
+function c2_ports(){
+  const {svg,g,w,h}=freshG("chart-2");
+  const ports=[
+    {n:"Indah Kiat",sel:true,note:"Scheme A"},
+    {n:"Ciwandan",sel:true,note:"Scheme D"},
+    {n:"Bandar Bakau Jaya",sel:true,note:"Scheme E"},
+    {n:"Pelabuhan Panjang",sel:false,note:"distant"},
+    {n:"BBJ Muara Pilu",sel:true,note:"Sumatra pair"},
+  ];
+  const m={t:50,l:30}; const rowH=(h-90)/ports.length;
+  g.append("text").attr("x",m.l).attr("y",30).attr("class","title-in-svg").text("Compatibility screen");
+  ports.forEach((p,i)=>{
+    const y=m.t+i*rowH+rowH/2;
+    const row=g.append("g").style("opacity",0);
+    row.transition().delay(i*120).duration(400).style("opacity",1);
+    row.append("circle").attr("cx",m.l+8).attr("cy",y).attr("r",7)
+      .attr("fill",p.sel?C.good:"none").attr("stroke",p.sel?C.good:C.muted).attr("stroke-width",1.5);
+    if(p.sel) row.append("path").attr("d",`M${m.l+4} ${y} l3 3 l6 -7`).attr("fill","none").attr("stroke","#fff").attr("stroke-width",1.6);
+    row.append("text").attr("x",m.l+26).attr("y",y+5).attr("class","val-label")
+      .attr("fill",p.sel?C.ink:C.muted).text(p.n);
+    row.append("text").attr("x",w-30).attr("y",y+5).attr("text-anchor","end").attr("class","ax-label")
+      .attr("fill",p.sel?C.good:C.danger).text((p.sel?"✓ ":"✗ ")+p.note);
+  });
+  d3.select("#tag-2").text("Fig 05 · Five candidate ports, five schemes");
+}
+
+function c2_solution(){
+  const {svg,g,w,h}=freshG("chart-2");
+  const SR=Math.max(26,Math.min(36,w*0.07));   // source radius
+  const NR=Math.max(20,Math.min(28,w*0.055));   // node radius
+  const src={x:w*0.17,y:h*0.5};
+  const tx=w*0.46;
+  g.append("text").attr("x",24).attr("y",32).attr("class","title-in-svg").text("Load redistribution");
+  // source bubble (Merak overloaded)
+  const bg=g.append("g").attr("transform",`translate(${src.x},${src.y})`);
+  bg.append("circle").attr("r",0).attr("fill",C.danger).attr("opacity",0.92)
+    .transition().duration(600).attr("r",SR);
+  bg.append("text").attr("y",-3).attr("text-anchor","middle").attr("class","val-label").attr("fill","#fff").style("font-size","11px").text("MERAK");
+  bg.append("text").attr("y",13).attr("text-anchor","middle").attr("class","val-label").attr("fill","#fff").style("font-size","13px").text("1.15");
+  SCHEMES.forEach((s,i)=>{
+    const ty=h*(0.24+i*0.26);
+    const path=g.append("path")
+      .attr("d",`M${src.x+SR} ${src.y} C ${(src.x+tx)/2} ${src.y}, ${(src.x+tx)/2} ${ty}, ${tx-NR-2} ${ty}`)
+      .attr("fill","none").attr("stroke",C.line).attr("stroke-width",2);
+    const L=path.node().getTotalLength();
+    path.attr("stroke-dasharray",L).attr("stroke-dashoffset",L)
+      .transition().delay(500+i*250).duration(700).attr("stroke-dashoffset",0)
+      .attr("stroke",C.water).attr("opacity",0.55);
+    const tg=g.append("g").attr("transform",`translate(${tx},${ty})`).style("opacity",0);
+    tg.transition().delay(900+i*250).duration(400).style("opacity",1);
+    tg.append("circle").attr("r",NR).attr("fill",C.good).attr("opacity",0.14).attr("stroke",C.good);
+    tg.append("text").attr("y",-3).attr("text-anchor","middle").attr("class","val-label").attr("fill",C.ink).style("font-size","13px").text(s.id);
+    tg.append("text").attr("y",12).attr("text-anchor","middle").attr("class","ax-label").attr("fill",C.good).text(s.vc.toFixed(2));
+    tg.append("text").attr("x",NR+10).attr("y",-2).attr("class","val-label").attr("fill",C.inkSoft).style("font-size","11px").text(s.port);
+    tg.append("text").attr("x",NR+10).attr("y",13).attr("class","ax-label").attr("fill",C.muted).style("font-size","10px").text(s.classes);
+  });
+  d3.select("#tag-2").text("Fig 06 · Merak 1.15 → three ports under 0.80");
+}
+
+/* ===== CHART 3 dispatcher (ledger) ===== */
+function c3_comp(){
+  const {svg,g,w,h}=freshG("chart-3");
+  const cx=w*0.5, cy=h*0.42, R=Math.min(w,h)*0.22;
+  const data=[{k:"To shipping companies",v:14821275480,c:C.water},{k:"To port operators",v:2948480129,c:C.accent}];
+  const total=17769755607;
+  const pie=d3.pie().value(d=>d.v).sort(null);
+  const arc=d3.arc().innerRadius(R*0.56).outerRadius(R);
+  const arcs=pie(data);
+  g.append("text").attr("x",cx).attr("y",h*0.10).attr("text-anchor","middle").attr("class","title-in-svg").text("Where the Rp 17.77 B goes");
+  const gg=g.append("g").attr("transform",`translate(${cx},${cy})`);
+  gg.selectAll("path").data(arcs).enter().append("path").attr("fill",d=>d.data.c).attr("opacity",0.9)
+    .transition().duration(800).attrTween("d",function(d){const i=d3.interpolate({startAngle:d.startAngle,endAngle:d.startAngle},d);return t=>arc(i(t));});
+  gg.append("text").attr("text-anchor","middle").attr("y",-2).attr("class","val-label").style("font-size","13px").attr("fill",C.muted).text("TOTAL");
+  gg.append("text").attr("text-anchor","middle").attr("y",18).attr("class","title-in-svg").style("font-size","19px").text("Rp 17.8 B");
+  // legend with %
+  data.forEach((d,i)=>{
+    const pct=Math.round(d.v/total*100);
+    const ly=h*0.74+i*30;
+    g.append("rect").attr("x",w*0.18).attr("y",ly-11).attr("width",13).attr("height",13).attr("rx",2).attr("fill",d.c).attr("opacity",0.9);
+    g.append("text").attr("x",w*0.18+22).attr("y",ly).attr("class","val-label").attr("fill",C.ink).text(d.k);
+    g.append("text").attr("x",w*0.82).attr("y",ly).attr("text-anchor","end").attr("class","val-label").attr("fill",d.c).text(pct+"%");
+  });
+  d3.select("#tag-3").text("Fig 07 · Compensation split · Scheme E = Rp 0");
+}
+
+function c3_wait(){
+  const {svg,g,w,h}=freshG("chart-3");
+  const m={t:54,r:20,b:46,l:46};
+  const iw=w-m.l-m.r, ih=h-m.t-m.b;
+  const gg=g.attr("transform",`translate(${m.l},${m.t})`);
+  const x0=d3.scaleBand().domain(WAIT.map(d=>d.d)).range([0,iw]).padding(0.3);
+  const x1=d3.scaleBand().domain(["before","after"]).range([0,x0.bandwidth()]).padding(0.12);
+  const y=d3.scaleLinear().domain([0,390]).range([ih,0]);
+  gg.append("text").attr("x",0).attr("y",-24).attr("class","title-in-svg").text("Average waiting time — before vs after");
+  [0,120,240,360].forEach(t=>{
+    gg.append("line").attr("x1",0).attr("x2",iw).attr("y1",y(t)).attr("y2",y(t)).attr("stroke",C.line).attr("stroke-width",t===0?1.2:0.7);
+    gg.append("text").attr("x",-8).attr("y",y(t)+3).attr("text-anchor","end").attr("class","ax-label").text(fmtMin(t));
+  });
+  WAIT.forEach((d,i)=>{
+    const grp=gg.append("g").attr("transform",`translate(${x0(d.d)},0)`);
+    // before
+    grp.append("rect").attr("x",x1("before")).attr("width",x1.bandwidth()).attr("y",ih).attr("height",0)
+      .attr("fill",C.danger).attr("opacity",d.op?0.9:0.4)
+      .transition().delay(i*60).duration(600).attr("y",y(d.before)).attr("height",ih-y(d.before));
+    // after
+    if(d.after!=null){
+      grp.append("rect").attr("x",x1("after")).attr("width",x1.bandwidth()).attr("y",ih).attr("height",0)
+        .attr("fill",C.good).attr("opacity",0.9)
+        .transition().delay(i*60+250).duration(600).attr("y",y(d.after)).attr("height",ih-y(d.after));
+      if(d.red) grp.append("text").attr("x",x0.bandwidth()/2).attr("y",y(d.before)-6).attr("text-anchor","middle")
+        .attr("class","ax-label").attr("fill",C.good).style("opacity",0).text("−"+d.red+"%")
+        .transition().delay(i*60+700).duration(300).style("opacity",1);
+    }
+    grp.append("text").attr("x",x0.bandwidth()/2).attr("y",ih+18).attr("text-anchor","middle").attr("class","ax-label").text(d.d);
+  });
+  // legend
+  [["Before",C.danger,0.66],["After",C.good,0.82]].forEach(([t,c,px])=>{
+    gg.append("rect").attr("x",iw*px).attr("y",-20).attr("width",11).attr("height",11).attr("rx",2).attr("fill",c).attr("opacity",0.9);
+    gg.append("text").attr("x",iw*px+16).attr("y",-11).attr("class","ax-label").attr("fill",C.ink).text(t);
+  });
+  d3.select("#tag-3").text("Fig 08 · Peak wait cut from 5h+ to under 2h");
+}
+
+function c3_bcr(){
+  const {svg,g,w,h}=freshG("chart-3");
+  const m={t:60,r:30,b:50,l:60};
+  const iw=w-m.l-m.r, ih=h-m.t-m.b;
+  const gg=g.attr("transform",`translate(${m.l},${m.t})`);
+  const cost=17.77, benefit=59.6;
+  const data=[
+    {k:"Cost",seg:[{lab:"Compensation",v:17.77,c:C.accent}]},
+    {k:"Public benefit",seg:[{lab:"Fuel saved (BCR 0.63)",v:11.16,c:C.warn},{lab:"Time saved (BCR 2.73)",v:48.45,c:C.good}]},
+  ];
+  const x=d3.scaleBand().domain(data.map(d=>d.k)).range([0,iw]).padding(0.42);
+  const y=d3.scaleLinear().domain([0,70]).range([ih,0]);
+  gg.append("text").attr("x",0).attr("y",-26).attr("class","title-in-svg").text("Cost vs avoided gridlock (Rp B)");
+  [0,20,40,60].forEach(t=>{
+    gg.append("line").attr("x1",0).attr("x2",iw).attr("y1",y(t)).attr("y2",y(t)).attr("stroke",C.line).attr("stroke-width",t===0?1.2:0.7);
+    gg.append("text").attr("x",-8).attr("y",y(t)+3).attr("text-anchor","end").attr("class","ax-label").text(t);
+  });
+  data.forEach((d,di)=>{
+    let acc=0;
+    d.seg.forEach((s,si)=>{
+      const y0=acc, y1=acc+s.v; acc=y1;
+      gg.append("rect").attr("x",x(d.k)).attr("width",x.bandwidth())
+        .attr("y",ih).attr("height",0).attr("fill",s.c).attr("opacity",0.9)
+        .transition().delay(di*300+si*200).duration(600)
+        .attr("y",y(y1)).attr("height",y(y0)-y(y1));
+      gg.append("text").attr("x",x(d.k)+x.bandwidth()/2).attr("y",(y(y0)+y(y1))/2+4).attr("text-anchor","middle")
+        .attr("class","ax-label").attr("fill","#fff").style("opacity",0).text(s.v.toFixed(1))
+        .transition().delay(di*300+si*200+500).duration(300).style("opacity",1);
+    });
+    gg.append("text").attr("x",x(d.k)+x.bandwidth()/2).attr("y",ih+20).attr("text-anchor","middle").attr("class","ax-label").attr("fill",C.ink).text(d.k);
+  });
+  // BCR call-out
+  gg.append("text").attr("x",x("Public benefit")+x.bandwidth()/2).attr("y",y(59.6)-14).attr("text-anchor","middle")
+    .attr("class","title-in-svg").attr("fill",C.good).style("opacity",0).style("font-size","18px").text("BCR 3.4×")
+    .transition().delay(1400).duration(400).style("opacity",1);
+  d3.select("#tag-3").text("Fig 09 · Benefit-to-cost ratio");
+}
+
+/* ===== CHART 4 dispatcher (sensitivity/durability) ===== */
+function c4_sens(){
+  const {svg,g,w,h}=freshG("chart-4");
+  const m={t:56,r:30,b:50,l:56};
+  const iw=w-m.l-m.r, ih=h-m.t-m.b;
+  const gg=g.attr("transform",`translate(${m.l},${m.t})`);
+  const x=d3.scalePoint().domain(SENS.map(d=>d.vc.toFixed(2))).range([0,iw]).padding(0.4);
+  const y=d3.scaleLinear().domain([0,70]).range([ih,0]);
+  gg.append("text").attr("x",0).attr("y",-26).attr("class","title-in-svg").text("Implementation cost vs V/C standard");
+  [0,20,40,60].forEach(t=>{
+    gg.append("line").attr("x1",0).attr("x2",iw).attr("y1",y(t)).attr("y2",y(t)).attr("stroke",C.line).attr("stroke-width",t===0?1.2:0.7);
+    gg.append("text").attr("x",-8).attr("y",y(t)+3).attr("text-anchor","end").attr("class","ax-label").text("Rp "+t+"B");
+  });
+  const line=d3.line().x(d=>x(d.vc.toFixed(2))).y(d=>y(d.cost)).curve(d3.curveMonotoneX);
+  const path=gg.append("path").datum(SENS).attr("fill","none").attr("stroke",C.water).attr("stroke-width",2.4).attr("d",line);
+  const L=path.node().getTotalLength();
+  path.attr("stroke-dasharray",L).attr("stroke-dashoffset",L).transition().duration(1100).attr("stroke-dashoffset",0);
+  gg.selectAll(".pt").data(SENS).enter().append("circle")
+    .attr("cx",d=>x(d.vc.toFixed(2))).attr("cy",d=>y(d.cost)).attr("r",0)
+    .attr("fill",d=>d.vc===0.8?C.accent:C.waterDeep)
+    .transition().delay((d,i)=>i*140+300).duration(300).attr("r",d=>d.vc===0.8?7:4.5);
+  // highlight chosen
+  const chosen=SENS.find(d=>d.vc===0.8);
+  gg.append("text").attr("x",x("0.80")).attr("y",y(chosen.cost)-14).attr("text-anchor","middle")
+    .attr("class","val-label").attr("fill",C.accent).style("opacity",0).text("chosen · Rp 17.8B")
+    .transition().delay(1200).duration(400).style("opacity",1);
+  gg.selectAll(".xl").data(SENS).enter().append("text").attr("x",d=>x(d.vc.toFixed(2))).attr("y",ih+20)
+    .attr("text-anchor","middle").attr("class","ax-label").text(d=>d.vc.toFixed(2));
+  gg.append("text").attr("x",iw/2).attr("y",ih+40).attr("text-anchor","middle").attr("class","ax-label").attr("fill",C.muted).text("V/C standard (stricter ← → looser)");
+  d3.select("#tag-4").text("Fig 10 · The standard sets the price");
+}
+
+function c4_dura(){
+  const {svg,g,w,h}=freshG("chart-4");
+  const m={t:56,r:24,b:54,l:50};
+  const iw=w-m.l-m.r, ih=h-m.t-m.b;
+  const gg=g.attr("transform",`translate(${m.l},${m.t})`);
+  const x=d3.scaleBand().domain(DURA.map(d=>d.y)).range([0,iw]).padding(0.26);
+  const y=d3.scaleLinear().domain([0,95]).range([ih,0]);
+  gg.append("text").attr("x",0).attr("y",-26).attr("class","title-in-svg").text("Cost to hold the line, year by year");
+  [0,30,60,90].forEach(t=>{
+    gg.append("line").attr("x1",0).attr("x2",iw).attr("y1",y(t)).attr("y2",y(t)).attr("stroke",C.line).attr("stroke-width",t===0?1.2:0.7);
+    gg.append("text").attr("x",-8).attr("y",y(t)+3).attr("text-anchor","end").attr("class","ax-label").text("Rp"+t+"B");
+  });
+  DURA.forEach((d,i)=>{
+    if(d.ok){
+      const col = d.vc<=0.8 ? C.water : (d.vc<=0.9 ? C.warn : C.danger);
+      gg.append("rect").attr("x",x(d.y)).attr("width",x.bandwidth()).attr("y",ih).attr("height",0)
+        .attr("fill",col).attr("opacity",0.88)
+        .transition().delay(i*80).duration(600).attr("y",y(d.cost)).attr("height",ih-y(d.cost));
+      gg.append("text").attr("x",x(d.y)+x.bandwidth()/2).attr("y",y(d.cost)-6).attr("text-anchor","middle")
+        .attr("class","ax-label").attr("fill",col).style("opacity",0).text(d.vc.toFixed(2))
+        .transition().delay(i*80+500).duration(300).style("opacity",1);
+    } else {
+      // the wall: 2033 not possible
+      gg.append("rect").attr("x",x(d.y)).attr("width",x.bandwidth()).attr("y",0).attr("height",ih)
+        .attr("fill",C.danger).attr("opacity",0).attr("stroke",C.danger).attr("stroke-dasharray","4 4")
+        .transition().delay(i*80).duration(500).attr("opacity",0.12);
+      gg.append("text").attr("x",x(d.y)+x.bandwidth()/2).attr("y",ih/2).attr("text-anchor","middle")
+        .attr("class","val-label").attr("fill",C.danger).style("opacity",0)
+        .text("NOT").transition().delay(i*80+300).duration(300).style("opacity",1);
+      gg.append("text").attr("x",x(d.y)+x.bandwidth()/2).attr("y",ih/2+16).attr("text-anchor","middle")
+        .attr("class","val-label").attr("fill",C.danger).style("opacity",0)
+        .text("POSSIBLE").transition().delay(i*80+300).duration(300).style("opacity",1);
+    }
+    gg.append("text").attr("x",x(d.y)+x.bandwidth()/2).attr("y",ih+18).attr("text-anchor","middle")
+      .attr("class","ax-label").attr("fill",d.ok?C.muted:C.danger).text("'"+String(d.y).slice(2));
+  });
+  // note about loosening standard
+  gg.append("text").attr("x",iw).attr("y",ih+40).attr("text-anchor","end").attr("class","ax-label").attr("fill",C.muted)
+    .text("bar colour = required V/C standard, 0.80 → 1.00");
+  d3.select("#tag-4").text("Fig 11 · The policy expires around 2033");
+}
+
+/* ---------- DISPATCH MAP ---------- */
+const RENDER = {
+  hook:c1_hook, vc:c1_vc, mix:c1_mix,
+  method:c2_method, ports:c2_ports, solution:c2_solution,
+  comp:c3_comp, wait:c3_wait, bcr:c3_bcr,
+  sens:c4_sens, dura:c4_dura,
+};
+let current = null;
+
+function activate(step){
+  if(step===current) return;
+  current=step;
+  if(RENDER[step]) RENDER[step]();
+}
+
+/* ---------- OBSERVER ---------- */
+const obs = new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{ if(e.isIntersecting) activate(e.target.dataset.step); });
+},{rootMargin:"-45% 0px -45% 0px", threshold:0});
+
+document.querySelectorAll(".step").forEach(s=>obs.observe(s));
+
+/* initial render + resize redraw */
+window.addEventListener("load",()=>{ activate("hook"); });
+let rt;
+window.addEventListener("resize",()=>{ clearTimeout(rt); rt=setTimeout(()=>{ const c=current; current=null; activate(c); },180); });
+</script>
+</body>
+</html>
