@@ -213,10 +213,17 @@
   @media (max-width:900px){
     body{font-size:16px}
     .scrolly{grid-template-columns:1fr}
-    .sticky-wrap{order:-1}
-    .viz{height:auto;padding:0}
+    /* In a single column, .sticky-wrap would collapse to the chart's own
+       height (~52vh), leaving the sticky .viz with almost no range to stick
+       within — so the chart scrolled off after the first screen while the rest
+       of the narrative (and its chart updates) ran off-screen, reading as a
+       blank chart on mobile. display:contents drops the wrapper box and lifts
+       .viz straight into the .scrolly grid, so its sticky containing block
+       becomes the full-height section and the chart stays pinned while every
+       one of its steps scrolls past. */
+    .sticky-wrap{display:contents}
+    .viz{order:-1;height:auto;padding:0;position:sticky;top:0;z-index:5;background:var(--paper)}
     .viz-inner{height:52vh;border-radius:0;border-left:none;border-right:none}
-    .viz{position:sticky;top:0;z-index:5;background:var(--paper)}
     .narrative{padding:0 6vw}
     .step{min-height:74vh;padding:6vh 0}
     .step:first-child{padding-top:6vh}
