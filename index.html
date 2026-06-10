@@ -23,24 +23,27 @@
 <script src="https://unpkg.com/lenis@1.1.20/dist/lenis.min.js"></script>
 <style>
   :root{
-    --paper:#efe9db;
-    --paper-2:#e7e0cf;
-    --panel:#f4efe4;
-    --ink:#17263b;
-    --ink-soft:#3c4a5c;
-    --muted:#8b8472;
-    --line:#d4cbb4;
-    --water:#1b6e7d;
-    --water-deep:#11505c;
-    --good:#2f7d5b;
-    --warn:#cf9a3a;
-    --danger:#bf462f;
-    --danger-soft:#d98b78;
-    --accent:#c4622d;
+    --bg:#070d19;
+    --bg-2:#0a1322;
+    --panel:#0d1828;
+    --panel-2:#122036;
+    --ink:#e9f0f8;
+    --ink-soft:#aebdd1;
+    --muted:#62768f;
+    --line:rgba(148,180,216,.14);
+    --line-strong:rgba(148,180,216,.30);
+    --water:#38c5d6;
+    --water-deep:#1b8a9c;
+    --good:#46d99c;
+    --warn:#e8c558;
+    --danger:#ff6b5b;
+    --danger-soft:#b8503f;
+    --accent:#f0a35e;
     --maxw:1280px;
+    --glow-water:0 0 18px rgba(56,197,214,.35);
+    --glow-accent:0 0 22px rgba(240,163,94,.30);
   }
   *{box-sizing:border-box}
-  html{scroll-behavior:smooth}
 
   /* ---------- LENIS SMOOTH SCROLL ---------- */
   /* When Lenis is active it drives scroll via RAF, so native smooth-scroll is
@@ -53,31 +56,61 @@
 
   /* ---------- SCROLL PROGRESS BAR ---------- */
   .progress{
-    position:fixed;top:0;left:0;height:3px;width:0%;
+    position:fixed;top:0;left:0;height:2px;width:100%;
     background:linear-gradient(90deg,var(--water),var(--accent));
-    z-index:50;pointer-events:none;
-    transition:width .08s linear;will-change:width;
+    box-shadow:0 0 12px rgba(56,197,214,.55);
+    z-index:60;pointer-events:none;
+    transform:scaleX(0);transform-origin:0 50%;will-change:transform;
   }
-  @media (prefers-reduced-motion:reduce){
-    html{scroll-behavior:auto}
-    .progress{transition:none}
-    .scroll-cue .arrow{animation:none}
-  }
+
+  ::selection{background:rgba(56,197,214,.32);color:var(--ink)}
 
   body{
     margin:0;
-    background:var(--paper);
+    background:var(--bg);
     color:var(--ink);
     font-family:"Instrument Sans",ui-sans-serif,sans-serif;
     font-size:18px;
     line-height:1.65;
     -webkit-font-smoothing:antialiased;
     background-image:
-      radial-gradient(circle at 18% 12%, rgba(27,110,125,.05), transparent 45%),
-      radial-gradient(circle at 85% 70%, rgba(191,70,47,.04), transparent 40%);
+      radial-gradient(ellipse 90% 60% at 15% 0%, rgba(27,138,156,.10), transparent 55%),
+      radial-gradient(ellipse 70% 50% at 90% 85%, rgba(240,163,94,.05), transparent 50%);
+    background-attachment:fixed;
   }
   .mono{font-family:"Spline Sans Mono",ui-monospace,monospace;font-feature-settings:"tnum" 1}
   h1,h2,h3{font-family:"Fraunces",Georgia,serif;font-weight:600;line-height:1.08;letter-spacing:-.01em}
+
+  /* ---------- CHAPTER DOT NAV ---------- */
+  .chapnav{
+    position:fixed;right:20px;top:50%;transform:translateY(-50%);
+    display:flex;flex-direction:column;gap:11px;z-index:55;
+  }
+  .chapnav button{
+    width:22px;height:22px;padding:0;border:0;background:none;cursor:pointer;
+    display:grid;place-items:center;position:relative;
+  }
+  .chapnav button::before{
+    content:"";width:7px;height:7px;border-radius:50%;
+    background:var(--muted);opacity:.55;
+    transition:background .35s ease,transform .35s cubic-bezier(.22,1,.36,1),opacity .35s ease,box-shadow .35s ease;
+  }
+  .chapnav button:hover::before{opacity:1;transform:scale(1.35)}
+  .chapnav button.on::before{
+    background:var(--accent);opacity:1;transform:scale(1.55);
+    box-shadow:0 0 10px rgba(240,163,94,.7);
+  }
+  .chapnav button::after{
+    content:attr(data-label);
+    position:absolute;right:26px;top:50%;transform:translate(6px,-50%);
+    font-family:"Spline Sans Mono",monospace;font-size:.62rem;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--ink-soft);white-space:nowrap;
+    background:var(--panel-2);border:1px solid var(--line);border-radius:3px;
+    padding:.28em .7em;opacity:0;pointer-events:none;
+    transition:opacity .25s ease,transform .25s cubic-bezier(.22,1,.36,1);
+  }
+  .chapnav button:hover::after,.chapnav button:focus-visible::after{opacity:1;transform:translate(0,-50%)}
+  .chapnav button:focus-visible{outline:1px solid var(--water);outline-offset:2px;border-radius:50%}
 
   /* ---------- HERO ---------- */
   .hero{
@@ -87,17 +120,23 @@
     position:relative;overflow:hidden;
     border-bottom:1px solid var(--line);
   }
-  .hero-grid{position:absolute;inset:0;opacity:.5;pointer-events:none}
+  .hero-sea{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+  .hero-vignette{
+    position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(ellipse 120% 90% at 50% 45%, transparent 55%, rgba(4,8,16,.75) 100%);
+  }
+  .hero-content{position:relative;z-index:2}
   .kicker{
     font-family:"Spline Sans Mono",monospace;
     font-size:.78rem;letter-spacing:.32em;text-transform:uppercase;
-    color:var(--water-deep);margin-bottom:1.6rem;
+    color:var(--water);margin-bottom:1.6rem;
+    text-shadow:0 0 14px rgba(56,197,214,.45);
   }
   .hero h1{
     font-size:clamp(2.4rem,6.4vw,5.4rem);
     margin:0 0 1.4rem;max-width:16ch;
   }
-  .hero h1 em{font-style:italic;color:var(--accent)}
+  .hero h1 em{font-style:italic;color:var(--accent);text-shadow:var(--glow-accent)}
   .hero .lede{
     font-size:clamp(1.05rem,1.6vw,1.32rem);
     max-width:54ch;color:var(--ink-soft);margin:0 0 2.2rem;
@@ -107,14 +146,38 @@
     color:var(--muted);letter-spacing:.04em;line-height:1.9;
   }
   .byline strong{color:var(--ink);font-weight:600}
+
+  /* hero entrance choreography */
+  @keyframes riseIn{from{opacity:0;transform:translateY(26px)}to{opacity:1;transform:none}}
+  .hero .kicker{animation:riseIn .8s cubic-bezier(.22,1,.36,1) .15s both}
+  .hero h1{animation:riseIn 1s cubic-bezier(.22,1,.36,1) .35s both}
+  .hero .lede{animation:riseIn 1s cubic-bezier(.22,1,.36,1) .6s both}
+  .hero .byline{animation:riseIn 1s cubic-bezier(.22,1,.36,1) .8s both}
+  .scroll-cue{animation:riseIn 1s ease 1.4s both}
+
+  /* hero sea layers: slow drifting wave contours + crossing ferry */
+  @keyframes drift{from{transform:translateX(0)}to{transform:translateX(-720px)}}
+  .wave-far{animation:drift 90s linear infinite}
+  .wave-mid{animation:drift 60s linear infinite}
+  .wave-near{animation:drift 38s linear infinite}
+  @keyframes crossing{
+    0%{transform:translateY(0)} 48%{transform:translateY(-432px)}
+    52%{transform:translateY(-432px)} 100%{transform:translateY(0)}
+  }
+  .hero-ferry{animation:crossing 26s ease-in-out infinite}
+  @keyframes sounding{0%,100%{opacity:.12}50%{opacity:.55}}
+  .sound-dot{animation:sounding 5s ease-in-out infinite}
+  .sound-dot:nth-child(2n){animation-delay:1.6s}
+  .sound-dot:nth-child(3n){animation-delay:3.1s}
+
   .scroll-cue{
     position:absolute;bottom:3vh;left:50%;transform:translateX(-50%);
     font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.25em;
     text-transform:uppercase;color:var(--muted);
-    display:flex;flex-direction:column;align-items:center;gap:.5rem;
+    display:flex;flex-direction:column;align-items:center;gap:.5rem;z-index:2;
   }
-  .scroll-cue .arrow{width:1px;height:30px;background:var(--muted);position:relative;animation:drop 2s ease-in-out infinite}
-  @keyframes drop{0%,100%{opacity:.3;transform:scaleY(.6)}50%{opacity:1;transform:scaleY(1)}}
+  .scroll-cue .arrow{width:1px;height:30px;background:var(--water);position:relative;animation:drop 2s ease-in-out infinite;box-shadow:0 0 8px rgba(56,197,214,.6)}
+  @keyframes drop{0%,100%{opacity:.25;transform:scaleY(.6)}50%{opacity:1;transform:scaleY(1)}}
 
   /* ---------- SCROLLY LAYOUT ---------- */
   .scrolly{
@@ -135,29 +198,42 @@
     will-change:transform;transform:translateZ(0);backface-visibility:hidden;
   }
   .viz-inner{
-    background:var(--panel);
-    border:1px solid var(--line);
-    border-radius:4px;
+    background:linear-gradient(180deg,var(--panel-2),var(--panel));
+    border:1px solid var(--line-strong);
+    border-radius:6px;
     height:84vh;
     position:relative;overflow:hidden;
-    box-shadow:0 1px 0 rgba(23,38,59,.04), 0 24px 48px -32px rgba(23,38,59,.4);
+    box-shadow:
+      0 0 0 1px rgba(56,197,214,.05),
+      inset 0 1px 0 rgba(233,240,248,.05),
+      0 32px 64px -36px rgba(0,0,0,.85);
+    will-change:transform;
   }
+  /* faint chart-paper: sounding dots + one hairline per "fathom" */
   .viz-inner::before{
-    content:"";position:absolute;inset:0;pointer-events:none;opacity:.5;
-    background-image:repeating-linear-gradient(0deg,transparent 0 38px,rgba(27,110,125,.04) 38px 39px);
+    content:"";position:absolute;inset:0;pointer-events:none;opacity:.6;
+    background-image:
+      radial-gradient(rgba(56,197,214,.10) 1px, transparent 1.4px),
+      repeating-linear-gradient(0deg,transparent 0 46px,rgba(56,197,214,.045) 46px 47px);
+    background-size:46px 46px,auto;
   }
   .viz-tag{
     position:absolute;top:14px;left:16px;z-index:3;
     font-family:"Spline Sans Mono",monospace;font-size:.68rem;letter-spacing:.18em;
     text-transform:uppercase;color:var(--muted);
+    transition:opacity .4s ease;
   }
   svg.chart{width:100%;height:100%;display:block;position:relative;z-index:2}
+  svg.chart .layer{will-change:opacity,transform}
 
   .step{
     min-height:86vh;
     display:flex;flex-direction:column;justify-content:center;
     padding:5vh 0;
+    opacity:.3;transform:translateY(10px);
+    transition:opacity .6s ease,transform .6s cubic-bezier(.22,1,.36,1);
   }
+  .step.is-active{opacity:1;transform:none}
   .step:first-child{padding-top:14vh}
   .step:last-child{min-height:96vh}
   .step .num{
@@ -166,31 +242,38 @@
   }
   .step h2{font-size:clamp(1.6rem,2.6vw,2.4rem);margin:0 0 1.1rem}
   .step p{margin:0 0 1.1rem;color:var(--ink-soft)}
+  .step p strong{color:var(--ink)}
   .step p.big-num{
     font-family:"Fraunces",serif;font-size:clamp(2.2rem,4vw,3.2rem);
     color:var(--ink);line-height:1;margin:.4rem 0 .8rem;font-weight:600;
   }
-  .step p.big-num span{color:var(--accent)}
+  .step p.big-num span{color:var(--accent);text-shadow:var(--glow-accent)}
   .step .note{
-    font-size:.92rem;color:var(--muted);border-left:2px solid var(--line);
+    font-size:.92rem;color:var(--muted);border-left:2px solid var(--line-strong);
     padding-left:1rem;margin-top:1.4rem;
   }
   .pill{
     display:inline-block;font-family:"Spline Sans Mono",monospace;font-size:.74rem;
     padding:.18em .6em;border-radius:3px;letter-spacing:.02em;
-    background:var(--paper-2);border:1px solid var(--line);color:var(--ink-soft);
+    background:var(--panel-2);border:1px solid var(--line-strong);color:var(--ink-soft);
   }
-  .pill.danger{background:rgba(191,70,47,.1);border-color:var(--danger-soft);color:var(--danger)}
-  .pill.good{background:rgba(47,125,91,.12);border-color:#9cc4ad;color:var(--good)}
-  .pill.water{background:rgba(27,110,125,.1);border-color:#9ec6cd;color:var(--water-deep)}
+  .pill.danger{background:rgba(255,107,91,.12);border-color:var(--danger-soft);color:var(--danger)}
+  .pill.good{background:rgba(70,217,156,.12);border-color:rgba(70,217,156,.4);color:var(--good)}
+  .pill.water{background:rgba(56,197,214,.12);border-color:rgba(56,197,214,.4);color:var(--water)}
 
   /* section intro full-width breaks */
   .interlude{
     max-width:760px;margin:0 auto;padding:16vh 7vw;text-align:center;
+    position:relative;
   }
-  .interlude .kicker{color:var(--accent)}
+  .interlude .kicker{color:var(--accent);text-shadow:var(--glow-accent)}
   .interlude h2{font-size:clamp(1.9rem,3.6vw,3rem);margin:0 0 1rem}
   .interlude p{color:var(--ink-soft);font-size:1.12rem;max-width:56ch;margin:0 auto}
+  .interlude .inner{
+    opacity:0;transform:translateY(28px);
+    transition:opacity .9s ease,transform .9s cubic-bezier(.22,1,.36,1);
+  }
+  .interlude.is-in .inner{opacity:1;transform:none}
 
   footer{
     border-top:1px solid var(--line);
@@ -200,7 +283,7 @@
   footer p{color:var(--ink-soft);max-width:62ch}
   .footer-meta{
     margin-top:3rem;font-family:"Spline Sans Mono",monospace;font-size:.78rem;
-    color:var(--muted);line-height:2;border-top:1px dashed var(--line);padding-top:2rem;
+    color:var(--muted);line-height:2;border-top:1px dashed var(--line-strong);padding-top:2rem;
   }
   .footer-meta strong{color:var(--ink)}
 
@@ -209,41 +292,114 @@
   .ax-label{font-size:11px;fill:var(--muted);letter-spacing:.05em}
   .val-label{font-size:12px;font-weight:600}
   .title-in-svg{font-family:"Fraunces",serif;font-size:15px;fill:var(--ink);font-weight:600}
+  .glow-water{filter:drop-shadow(0 0 7px rgba(56,197,214,.55))}
+  .glow-danger{filter:drop-shadow(0 0 7px rgba(255,107,91,.5))}
+  .glow-good{filter:drop-shadow(0 0 7px rgba(70,217,156,.5))}
+  .glow-accent{filter:drop-shadow(0 0 7px rgba(240,163,94,.55))}
 
   @media (max-width:900px){
     body{font-size:16px}
-    .scrolly{grid-template-columns:1fr}
-    .sticky-wrap{order:-1}
-    .viz{height:auto;padding:0}
+    .chapnav{display:none}
+    /* The chart panel truly pins on phones: the sticky wrap is stretched over
+       the whole section (absolute inset), so the sticky viz can ride the full
+       scroll while narrative text slides up beneath the opaque panel. */
+    .scrolly{display:block;position:relative}
+    .sticky-wrap{position:absolute;inset:0;pointer-events:none}
+    .viz{position:sticky;top:0;height:auto;padding:0;z-index:5;background:var(--bg);pointer-events:auto}
     .viz-inner{height:52vh;border-radius:0;border-left:none;border-right:none}
-    .viz{position:sticky;top:0;z-index:5;background:var(--paper)}
-    .narrative{padding:0 6vw}
-    .step{min-height:74vh;padding:6vh 0}
-    .step:first-child{padding-top:6vh}
+    .narrative{position:relative;z-index:1;padding:54vh 6vw 0}
+    .step{min-height:64vh;padding:6vh 0;opacity:.55}
+    .step:first-child{padding-top:2vh}
+    .step:last-child{min-height:80vh}
+  }
+
+  @media (prefers-reduced-motion:reduce){
+    .progress{transition:none}
+    .scroll-cue .arrow,.wave-far,.wave-mid,.wave-near,.hero-ferry,.sound-dot{animation:none}
+    .hero .kicker,.hero h1,.hero .lede,.hero .byline,.scroll-cue{animation:none}
+    .step{opacity:1;transform:none;transition:none}
+    .interlude .inner{opacity:1;transform:none;transition:none}
   }
 </style>
 </head>
 <body>
 
 <div class="progress" id="progress"></div>
+<nav class="chapnav" id="chapnav" aria-label="Chapters"></nav>
 
 <!-- ===================== HERO ===================== -->
 <header class="hero">
-  <svg class="hero-grid" preserveAspectRatio="none" viewBox="0 0 100 100">
+  <svg class="hero-sea" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
     <defs>
-      <pattern id="contour" width="100" height="22" patternUnits="userSpaceOnUse">
-        <path d="M0 11 Q 25 2 50 11 T 100 11" fill="none" stroke="#1b6e7d" stroke-width="0.18" opacity="0.5"/>
-      </pattern>
+      <linearGradient id="seaGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#0a1626"/>
+        <stop offset="0.5" stop-color="#081120"/>
+        <stop offset="1" stop-color="#070d19"/>
+      </linearGradient>
+      <linearGradient id="routeGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#38c5d6" stop-opacity=".9"/>
+        <stop offset="1" stop-color="#f0a35e" stop-opacity=".8"/>
+      </linearGradient>
     </defs>
-    <rect width="100" height="100" fill="url(#contour)"/>
+    <rect width="1440" height="900" fill="url(#seaGrad)"/>
+
+    <!-- drifting wave contour bands (each path is 2160 wide; loops at -720) -->
+    <g class="wave-far" opacity=".30" stroke="#1b8a9c" stroke-width="1" fill="none">
+      <path d="M0 300 Q 90 286 180 300 T 360 300 T 540 300 T 720 300 T 900 300 T 1080 300 T 1260 300 T 1440 300 T 1620 300 T 1800 300 T 1980 300 T 2160 300"/>
+      <path d="M0 430 Q 90 418 180 430 T 360 430 T 540 430 T 720 430 T 900 430 T 1080 430 T 1260 430 T 1440 430 T 1620 430 T 1800 430 T 1980 430 T 2160 430"/>
+      <path d="M0 560 Q 90 547 180 560 T 360 560 T 540 560 T 720 560 T 900 560 T 1080 560 T 1260 560 T 1440 560 T 1620 560 T 1800 560 T 1980 560 T 2160 560"/>
+    </g>
+    <g class="wave-mid" opacity=".18" stroke="#38c5d6" stroke-width="1.1" fill="none">
+      <path d="M0 360 Q 120 342 240 360 T 480 360 T 720 360 T 960 360 T 1200 360 T 1440 360 T 1680 360 T 1920 360 T 2160 360"/>
+      <path d="M0 500 Q 120 484 240 500 T 480 500 T 720 500 T 960 500 T 1200 500 T 1440 500 T 1680 500 T 1920 500 T 2160 500"/>
+    </g>
+    <g class="wave-near" opacity=".10" stroke="#e9f0f8" stroke-width="1" fill="none">
+      <path d="M0 640 Q 150 622 300 640 T 600 640 T 900 640 T 1200 640 T 1500 640 T 1800 640 T 2100 640 T 2160 640"/>
+    </g>
+
+    <!-- sounding dots -->
+    <g fill="#38c5d6">
+      <circle class="sound-dot" cx="220" cy="340" r="2"/>
+      <circle class="sound-dot" cx="480" cy="520" r="2"/>
+      <circle class="sound-dot" cx="760" cy="300" r="2"/>
+      <circle class="sound-dot" cx="1040" cy="470" r="2"/>
+      <circle class="sound-dot" cx="1250" cy="350" r="2"/>
+      <circle class="sound-dot" cx="930" cy="610" r="2"/>
+      <circle class="sound-dot" cx="350" cy="640" r="2"/>
+    </g>
+
+    <!-- coasts: Sumatra (top) / Java (bottom) -->
+    <path d="M0 150 Q 360 70 720 130 T 1440 110 L 1440 0 L 0 0 Z" fill="#0e1c30" stroke="rgba(148,180,216,.22)"/>
+    <path d="M0 780 Q 420 850 860 800 T 1440 790 L 1440 900 L 0 900 Z" fill="#0e1c30" stroke="rgba(148,180,216,.22)"/>
+    <text x="80" y="80" font-family="'Spline Sans Mono',monospace" font-size="12" letter-spacing="4" fill="#62768f">SUMATRA</text>
+    <text x="80" y="852" font-family="'Spline Sans Mono',monospace" font-size="12" letter-spacing="4" fill="#62768f">JAVA</text>
+
+    <!-- the crossing: Merak (bottom) to Bakauheni (top) -->
+    <line x1="1080" y1="788" x2="1080" y2="160" stroke="url(#routeGrad)" stroke-width="1.6" stroke-dasharray="7 7" opacity=".55"/>
+    <circle cx="1080" cy="160" r="5" fill="#f0a35e"/>
+    <circle cx="1080" cy="788" r="5" fill="#f0a35e"/>
+    <text x="1098" y="165" font-family="'Spline Sans Mono',monospace" font-size="11" fill="#aebdd1">Bakauheni</text>
+    <text x="1098" y="793" font-family="'Spline Sans Mono',monospace" font-size="11" fill="#aebdd1">Merak</text>
+    <text x="1098" y="480" font-family="'Spline Sans Mono',monospace" font-size="10" fill="#1b8a9c">15 nm</text>
+    <!-- ferry glyph commuting along the route -->
+    <g class="hero-ferry">
+      <g transform="translate(1080,760)">
+        <circle r="10" fill="#38c5d6" opacity=".14"/>
+        <rect x="-7" y="-4" width="14" height="8" rx="2" fill="#38c5d6"/>
+      </g>
+    </g>
   </svg>
-  <div class="kicker">Operations Research · Maritime Logistics · ITS 2024</div>
-  <h1>Engineering the <em>Strait</em></h1>
-  <p class="lede">Every Eid, the Merak–Bakauheni ferry crossing — Indonesia's busiest, just 15 nautical miles of water between Java and Sumatra — buckles under demand it cannot physically carry. This is how an optimization-and-simulation model turns that gridlock into a five-day backup-port plan, and what it costs to keep traffic moving.</p>
-  <div class="byline">
-    A data narrative from the final project of<br>
-    <strong>Galih Mahastra Adhikararaksaka</strong> · Marine Transportation Engineering, ITS<br>
-    Advisors: Ir. Tri Achmadi, Ph.D. · Christino Boyke S. P., Ph.D.
+  <div class="hero-vignette"></div>
+
+  <div class="hero-content">
+    <div class="kicker">Operations Research · Maritime Logistics · ITS 2024</div>
+    <h1>Engineering the <em>Strait</em></h1>
+    <p class="lede">Every Eid, the Merak–Bakauheni ferry crossing — Indonesia's busiest, just 15 nautical miles of water between Java and Sumatra — buckles under demand it cannot physically carry. This is how an optimization-and-simulation model turns that gridlock into a five-day backup-port plan, and what it costs to keep traffic moving.</p>
+    <div class="byline">
+      A data narrative from the final project of<br>
+      <strong>Galih Mahastra Adhikararaksaka</strong> · Marine Transportation Engineering, ITS<br>
+      Advisors: Ir. Tri Achmadi, Ph.D. · Christino Boyke S. P., Ph.D.
+    </div>
   </div>
   <div class="scroll-cue"><span>Scroll</span><span class="arrow"></span></div>
 </header>
@@ -287,9 +443,11 @@
 
 <!-- ===================== INTERLUDE: METHOD ===================== -->
 <section class="interlude">
-  <div class="kicker">The Approach</div>
-  <h2>Two engines, one objective</h2>
-  <p>The policy already existed — since 2022 the Ministry has diverted overflow to "backup ports." But it was set by intuition: long jams persisted, and shipping firms were forced onto longer routes with no compensation. The question this project answers is sharper: <em>which</em> ports, for <em>which</em> vehicles, with <em>which</em> ships — at minimum cost to the state and minimum pain to the public.</p>
+  <div class="inner">
+    <div class="kicker">The Approach</div>
+    <h2>Two engines, one objective</h2>
+    <p>The policy already existed — since 2022 the Ministry has diverted overflow to "backup ports." But it was set by intuition: long jams persisted, and shipping firms were forced onto longer routes with no compensation. The question this project answers is sharper: <em>which</em> ports, for <em>which</em> vehicles, with <em>which</em> ships — at minimum cost to the state and minimum pain to the public.</p>
+  </div>
 </section>
 
 <!-- ===================== SCROLLY 2: METHOD + SOLUTION ===================== -->
@@ -331,9 +489,11 @@
 
 <!-- ===================== INTERLUDE: THE LEDGER ===================== -->
 <section class="interlude">
-  <div class="kicker">The Ledger</div>
-  <h2>What it costs, and what it buys back</h2>
-  <p>A plan that keeps every port under capacity is only worth running if the public gains more than the state spends. So the model puts both sides of the trade on the same scale: rupiah out in compensation, rupiah saved in avoided gridlock.</p>
+  <div class="inner">
+    <div class="kicker">The Ledger</div>
+    <h2>What it costs, and what it buys back</h2>
+    <p>A plan that keeps every port under capacity is only worth running if the public gains more than the state spends. So the model puts both sides of the trade on the same scale: rupiah out in compensation, rupiah saved in avoided gridlock.</p>
+  </div>
 </section>
 
 <!-- ===================== SCROLLY 3: COST + BENEFIT ===================== -->
@@ -343,7 +503,7 @@
     <div class="step" data-step="comp">
       <div class="num">07 / The bill</div>
       <h2>Rp 17.8 billion to run it for five days</h2>
-      <p class="big-num">Rp <span>17.77</span> B</p>
+      <p class="big-num">Rp <span data-count="17.77" data-decimals="2">17.77</span> B</p>
       <p>Compensation splits in a revealing way: <strong>83%</strong> goes to shipping companies (fuel for diverted vessels, plus payments to ships displaced by the reshuffle) and only <strong>17%</strong> to port operators.</p>
       <p>Scheme E costs the state nothing — the Bandar Bakau Jaya fare is already cheaper than the regular crossing, so no top-up is owed.</p>
     </div>
@@ -359,7 +519,7 @@
       <div class="num">09 / The verdict</div>
       <h2>Every rupiah spent saves the public 3.4</h2>
       <p>Avoided gridlock — wasted fuel plus lost travel time — comes to <strong>Rp 59.6 billion</strong>. Against the Rp 17.8 billion price tag, that's a <strong>benefit-to-cost ratio of 3.4</strong>.</p>
-      <p class="big-num">BCR = <span>3.4×</span></p>
+      <p class="big-num">BCR = <span data-count="3.4" data-decimals="1">3.4</span>×</p>
       <p>Most of that value is indirect: the hours people don't lose sitting in line (BCR 2.73) far outweigh the fuel they don't burn (BCR 0.63).</p>
     </div>
 
@@ -376,9 +536,11 @@
 
 <!-- ===================== INTERLUDE: THE LIMIT ===================== -->
 <section class="interlude">
-  <div class="kicker">The Honest Part</div>
-  <h2>A bridge, not a destination</h2>
-  <p>The most useful finding isn't the savings. It's the expiry date.</p>
+  <div class="inner">
+    <div class="kicker">The Honest Part</div>
+    <h2>A bridge, not a destination</h2>
+    <p>The most useful finding isn't the savings. It's the expiry date.</p>
+  </div>
 </section>
 
 <!-- ===================== SCROLLY 4: SENSITIVITY + DURABILITY ===================== -->
@@ -425,12 +587,14 @@
 <script>
 "use strict";
 const C = {
-  ink:"#17263b", inkSoft:"#3c4a5c", muted:"#8b8472", line:"#d4cbb4",
-  water:"#1b6e7d", waterDeep:"#11505c", good:"#2f7d5b", warn:"#cf9a3a",
-  danger:"#bf462f", dangerSoft:"#d98b78", accent:"#c4622d", paper2:"#e7e0cf"
+  ink:"#e9f0f8", inkSoft:"#aebdd1", muted:"#62768f",
+  line:"rgba(148,180,216,.18)", lineStrong:"rgba(148,180,216,.34)",
+  water:"#38c5d6", waterDeep:"#1b8a9c", good:"#46d99c", warn:"#e8c558",
+  danger:"#ff6b5b", dangerSoft:"#b8503f", accent:"#f0a35e",
+  panel2:"#122036", onBright:"#081120"
 };
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const fmtPct = d => d.toFixed(0)+"%";
-const rp = v => "Rp "+v.toLocaleString("en-US");
 
 /* ---------- DATA ---------- */
 const VC = [
@@ -443,7 +607,7 @@ const VC = [
   {d:"H-1",day:"Sun",smp:21882,vc:90.1},
   {d:"H", day:"Mon",smp:10157,vc:41.8},
 ];
-const SMPFAC = {II:0.16,IV:1.0,VA:1.62,VB:1.64,VIA:2.56,VIB:2.57,VII:3.74,VIII:4.32,IX:4.92};
+const SMPFAC = {II:0.165,IV:1.0,VA:1.62,VB:1.64,VIA:2.56,VIB:2.57,VII:3.74,VIII:4.32,IX:4.92};
 const UNITS = {II:16530,IV:21180,VA:198,VB:781,VIA:706,VIB:96,VII:107,VIII:12,IX:11};
 const MIX = Object.keys(UNITS).map(k=>({cls:k,units:UNITS[k],smp:Math.round(UNITS[k]*SMPFAC[k])}))
               .sort((a,b)=>b.smp-a.smp);
@@ -482,112 +646,128 @@ const DURA = [
   {y:2033,cost:null, vc:null,ok:false},
 ];
 
-/* ---------- RENDER HELPERS ---------- */
+/* ---------- SCENE MANAGER ----------
+   One persistent SVG per section. Each step renders into its own fresh
+   layer <g>; on a step change the outgoing layer crossfades out while the
+   incoming layer fades in and plays its entrance — so the panel never
+   blanks between steps, and fast scrolling interrupts cleanly. */
+const EASE = d3.easeCubicOut;
+const XFADE = reduceMotion ? 0 : 420;
+
 function dims(svg){
-  const el = svg.node().parentNode;
-  const r = el.getBoundingClientRect();
+  const r = svg.node().parentNode.getBoundingClientRect();
   return {w:r.width, h:r.height};
 }
-function freshG(svgId){
+function showScene(svgId, builder){
   const svg = d3.select("#"+svgId);
-  svg.selectAll("*").interrupt();
-  svg.selectAll("*").remove();
   const {w,h} = dims(svg);
   svg.attr("viewBox",`0 0 ${w} ${h}`);
-  return {svg, g:svg.append("g"), w, h};
+  const old = svg.selectAll("g.layer");
+  old.interrupt().selectAll("*").interrupt();
+  const layer = svg.append("g").attr("class","layer");
+  builder(layer, w, h);
+  if(XFADE){
+    layer.attr("transform","translate(0,14)").style("opacity",0)
+      .transition().duration(XFADE).ease(EASE)
+      .attr("transform","translate(0,0)").style("opacity",1);
+    old.transition().duration(XFADE*0.8).ease(d3.easeCubicIn)
+      .style("opacity",0).attr("transform","translate(0,-10)").remove();
+  } else {
+    old.remove();
+  }
+}
+/* In reduced-motion mode every entrance transition collapses to its end state. */
+function tr(sel,dur,delay){
+  return sel.transition().duration(reduceMotion?0:dur).delay(reduceMotion?0:(delay||0)).ease(EASE);
 }
 
-/* ===== CHART 1 dispatcher (problem) ===== */
-function c1_hook(){
-  const {svg,g,w,h}=freshG("chart-1");
+/* ===== CHART 1 (problem) ===== */
+function c1_hook(g,w,h){
   const cx=w/2;
   // Sumatra (top), Java (bottom)
   g.append("path").attr("d",`M0 ${h*0.16} Q ${w*0.4} ${h*0.05} ${w} ${h*0.20} L ${w} 0 L 0 0 Z`)
-    .attr("fill",C.paper2).attr("stroke",C.line);
+    .attr("fill","#0e1c30").attr("stroke",C.lineStrong);
   g.append("path").attr("d",`M0 ${h*0.86} Q ${w*0.55} ${h*0.98} ${w} ${h*0.82} L ${w} ${h} L 0 ${h} Z`)
-    .attr("fill",C.paper2).attr("stroke",C.line);
-  g.append("text").attr("x",w*0.1).attr("y",h*0.1).attr("class","title-in-svg").text("SUMATRA");
-  g.append("text").attr("x",w*0.1).attr("y",h*0.94).attr("class","title-in-svg").text("JAVA");
+    .attr("fill","#0e1c30").attr("stroke",C.lineStrong);
+  g.append("text").attr("x",w*0.1).attr("y",h*0.1).attr("class","title-in-svg").attr("fill",C.inkSoft).text("SUMATRA");
+  g.append("text").attr("x",w*0.1).attr("y",h*0.94).attr("class","title-in-svg").attr("fill",C.inkSoft).text("JAVA");
   // ports
   const pT={x:cx,y:h*0.22}, pB={x:cx,y:h*0.80};
-  // crossing line
+  // crossing line draws itself
   const line=g.append("line").attr("x1",pB.x).attr("y1",pB.y).attr("x2",pB.x).attr("y2",pB.y)
-    .attr("stroke",C.water).attr("stroke-width",2).attr("stroke-dasharray","6 5");
-  line.transition().duration(900).attr("x2",pT.x).attr("y2",pT.y);
+    .attr("stroke",C.water).attr("stroke-width",2).attr("stroke-dasharray","6 5").attr("class","glow-water");
+  tr(line,900).attr("x2",pT.x).attr("y2",pT.y);
   [["Bakauheni",pT],["Merak",pB]].forEach(([n,p])=>{
-    g.append("circle").attr("cx",p.x).attr("cy",p.y).attr("r",0).attr("fill",C.accent)
-      .transition().delay(300).duration(500).attr("r",6);
+    const c=g.append("circle").attr("cx",p.x).attr("cy",p.y).attr("r",0).attr("fill",C.accent).attr("class","glow-accent");
+    tr(c,500,300).attr("r",6);
     g.append("text").attr("x",p.x+12).attr("y",p.y+4).attr("class","val-label").attr("fill",C.ink).text(n);
   });
-  g.append("text").attr("x",cx+10).attr("y",h*0.51).attr("class","ax-label").attr("fill",C.waterDeep)
-    .text("15 nautical miles").style("opacity",0).transition().delay(900).duration(500).style("opacity",1);
-  // ferry glyph animating
-  const ferry=g.append("rect").attr("width",16).attr("height",9).attr("rx",2).attr("fill",C.ink)
-    .attr("x",pB.x-8).attr("y",pB.y);
-  function sail(){ ferry.attr("y",pB.y).transition().duration(2600).ease(d3.easeSinInOut).attr("y",pT.y)
-    .transition().duration(2600).ease(d3.easeSinInOut).attr("y",pB.y).on("end",sail); }
-  sail();
+  const nm=g.append("text").attr("x",cx+10).attr("y",h*0.51).attr("class","ax-label").attr("fill",C.water)
+    .text("15 nautical miles").style("opacity",0);
+  tr(nm,500,900).style("opacity",1);
+  // ferry glyph commuting
+  const ferry=g.append("rect").attr("width",16).attr("height",9).attr("rx",2).attr("fill",C.water)
+    .attr("class","glow-water").attr("x",pB.x-8).attr("y",pB.y);
+  if(!reduceMotion){
+    (function sail(){ ferry.attr("y",pB.y).transition().duration(2600).ease(d3.easeSinInOut).attr("y",pT.y)
+      .transition().duration(2600).ease(d3.easeSinInOut).attr("y",pB.y).on("end",sail); })();
+  } else { ferry.attr("y",(pT.y+pB.y)/2); }
   g.append("text").attr("x",w*0.5).attr("y",h*0.62).attr("text-anchor","middle").attr("class","ax-label")
     .text("Java ↔ Sumatra · busiest crossing in Indonesia");
-  d3.select("#tag-1").text("Fig 01 · The crossing");
 }
 
-function c1_vc(){
-  const {svg,g,w,h}=freshG("chart-1");
+function c1_vc(g,w,h){
   const m={t:46,r:24,b:46,l:44};
   const iw=w-m.l-m.r, ih=h-m.t-m.b;
-  const gg=g.attr("transform",`translate(${m.l},${m.t})`);
+  const gg=g.append("g").attr("transform",`translate(${m.l},${m.t})`);
   const x=d3.scaleBand().domain(VC.map(d=>d.d)).range([0,iw]).padding(0.28);
   const y=d3.scaleLinear().domain([0,125]).range([ih,0]);
-  // threshold band (danger above 80)
+  // danger band above the 0.80 standard
   gg.append("rect").attr("x",0).attr("y",y(125)).attr("width",iw).attr("height",y(80)-y(125))
-    .attr("fill",C.danger).attr("opacity",0.06);
-  // gridlines
+    .attr("fill",C.danger).attr("opacity",0.07);
   [0,40,80,120].forEach(t=>{
     gg.append("line").attr("x1",0).attr("x2",iw).attr("y1",y(t)).attr("y2",y(t))
       .attr("stroke",C.line).attr("stroke-width",t===0?1.2:0.7);
     gg.append("text").attr("x",-8).attr("y",y(t)+3).attr("text-anchor","end").attr("class","ax-label").text(t+"%");
   });
-  // threshold line 80
   gg.append("line").attr("x1",0).attr("x2",iw).attr("y1",y(80)).attr("y2",y(80))
-    .attr("stroke",C.danger).attr("stroke-width",1.4).attr("stroke-dasharray","5 4");
-  gg.append("text").attr("x",iw).attr("y",y(80)-7).attr("text-anchor","end").attr("class","ax-label")
+    .attr("stroke",C.danger).attr("stroke-width",1.4).attr("stroke-dasharray","5 4").attr("class","glow-danger");
+  // label sits at the left, where the early (sub-threshold) bars leave headroom
+  gg.append("text").attr("x",4).attr("y",y(80)-7).attr("class","ax-label")
     .attr("fill",C.danger).text("0.80 safe limit");
-  // bars
-  gg.selectAll(".bar").data(VC).enter().append("rect")
+  tr(gg.selectAll(".bar").data(VC).enter().append("rect")
     .attr("x",d=>x(d.d)).attr("width",x.bandwidth())
-    .attr("y",ih).attr("height",0)
+    .attr("y",ih).attr("height",0).attr("rx",2)
     .attr("fill",d=>d.vc>80?C.danger:C.water)
-    .attr("opacity",d=>d.vc>80?0.92:0.78)
-    .transition().duration(700).delay((d,i)=>i*70)
+    .attr("opacity",d=>d.vc>80?0.92:0.75)
+    .attr("class",d=>d.vc>80?"glow-danger":null),700)
+    .delay((d,i)=>reduceMotion?0:i*70)
     .attr("y",d=>y(d.vc)).attr("height",d=>ih-y(d.vc));
-  // labels
   gg.selectAll(".bl").data(VC).enter().append("text")
     .attr("x",d=>x(d.d)+x.bandwidth()/2).attr("y",d=>y(d.vc)-6).attr("text-anchor","middle")
-    .attr("class","val-label").attr("fill",d=>d.vc>80?C.danger:C.waterDeep)
+    .attr("class","val-label").attr("fill",d=>d.vc>80?C.danger:C.water)
     .style("opacity",0).text(d=>fmtPct(d.vc))
-    .transition().delay((d,i)=>i*70+400).duration(300).style("opacity",1);
-  // x axis
+    .transition().delay((d,i)=>reduceMotion?0:i*70+400).duration(reduceMotion?0:300).style("opacity",1);
   gg.selectAll(".xl").data(VC).enter().append("text")
     .attr("x",d=>x(d.d)+x.bandwidth()/2).attr("y",ih+18).attr("text-anchor","middle")
     .attr("class","ax-label").text(d=>d.d);
-  d3.select("#tag-1").text("Fig 02 · Daily V/C ratio, 2025 Eid projection");
 }
 
-function c1_mix(){
-  const {svg,g,w,h}=freshG("chart-1");
-  const m={t:54,r:120,b:40,l:54};
+function c1_mix(g,w,h){
+  const m={t:72,r:120,b:40,l:54};
   const iw=w-m.l-m.r, ih=h-m.t-m.b;
-  const gg=g.attr("transform",`translate(${m.l},${m.t})`);
+  const gg=g.append("g").attr("transform",`translate(${m.l},${m.t})`);
   const data=MIX;
   const y=d3.scaleBand().domain(data.map(d=>d.cls)).range([0,ih]).padding(0.24);
   const x=d3.scaleLinear().domain([0,d3.max(data,d=>d.smp)]).range([0,iw]);
   gg.append("text").attr("x",0).attr("y",-22).attr("class","title-in-svg").text("Peak load by class — SMP (load units)");
-  gg.selectAll(".bar").data(data).enter().append("rect")
-    .attr("y",d=>y(d.cls)).attr("height",y.bandwidth()).attr("x",0).attr("width",0)
+  tr(gg.selectAll(".bar").data(data).enter().append("rect")
+    .attr("y",d=>y(d.cls)).attr("height",y.bandwidth()).attr("x",0).attr("width",0).attr("rx",2)
     .attr("fill",d=>d.cls==="IV"?C.accent:(d.cls==="II"?C.water:C.inkSoft))
-    .attr("opacity",d=>(d.cls==="IV"||d.cls==="II")?0.92:0.55)
-    .transition().duration(700).delay((d,i)=>i*55).attr("width",d=>x(d.smp));
+    .attr("opacity",d=>(d.cls==="IV"||d.cls==="II")?0.92:0.4)
+    .attr("class",d=>d.cls==="IV"?"glow-accent":(d.cls==="II"?"glow-water":null)),700)
+    .delay((d,i)=>reduceMotion?0:i*55)
+    .attr("width",d=>x(d.smp));
   gg.selectAll(".cl").data(data).enter().append("text")
     .attr("x",-8).attr("y",d=>y(d.cls)+y.bandwidth()/2+4).attr("text-anchor","end")
     .attr("class","ax-label").text(d=>"Gol "+d.cls);
@@ -595,39 +775,35 @@ function c1_mix(){
     .attr("x",d=>x(d.smp)+8).attr("y",d=>y(d.cls)+y.bandwidth()/2+4)
     .attr("class","val-label").attr("fill",C.ink).style("opacity",0)
     .text(d=>d.smp.toLocaleString()+(d.cls==="II"?" ("+d.units.toLocaleString()+" units)":""))
-    .transition().delay((d,i)=>i*55+350).duration(300).style("opacity",1);
-  d3.select("#tag-1").text("Fig 03 · Composition of the 27,964-SMP peak");
+    .transition().delay((d,i)=>reduceMotion?0:i*55+350).duration(reduceMotion?0:300).style("opacity",1);
 }
 
-/* ===== CHART 2 dispatcher (method/solution) ===== */
-function c2_method(){
-  const {svg,g,w,h}=freshG("chart-2");
+/* ===== CHART 2 (method/solution) ===== */
+function c2_method(g,w,h){
   const cx=w/2;
-  function box(x,y,bw,bh,fill,stroke){return g.append("rect").attr("x",x).attr("y",y).attr("width",bw).attr("height",bh).attr("rx",4).attr("fill",fill).attr("stroke",stroke).attr("stroke-width",1.2);}
+  function box(x,y,bw,bh,fill,stroke){return g.append("rect").attr("x",x).attr("y",y).attr("width",bw).attr("height",bh).attr("rx",6).attr("fill",fill).attr("stroke",stroke).attr("stroke-width",1.2);}
   function lbl(x,y,t,cls,fill){return g.append("text").attr("x",x).attr("y",y).attr("text-anchor","middle").attr("class",cls||"val-label").attr("fill",fill||C.ink).text(t);}
-  const bw=Math.min(280,w*0.62), bx=cx-bw/2;
+  const bw=Math.min(300,w*0.66), bx=cx-bw/2;
   // Optimization box
-  box(bx,h*0.10,bw,h*0.30,"rgba(196,98,45,0.08)",C.accent).style("opacity",0).transition().duration(500).style("opacity",1);
+  tr(box(bx,h*0.10,bw,h*0.30,"rgba(240,163,94,0.08)",C.accent).style("opacity",0),500).style("opacity",1);
   lbl(cx,h*0.16,"OPTIMIZATION","title-in-svg",C.accent);
   lbl(cx,h*0.225,"minimize  Σ compensation cost","ax-label",C.ink);
   lbl(cx,h*0.275,"choose: schemes · classes · vessels","ax-label",C.inkSoft);
   lbl(cx,h*0.345,"subject to:  every port V/C ≤ 0.80","val-label",C.danger);
-  // arrow
-  g.append("line").attr("x1",cx).attr("y1",h*0.40).attr("x2",cx).attr("y2",h*0.40)
-   .attr("stroke",C.muted).attr("stroke-width",1.5).attr("marker-end","")
-   .transition().delay(500).duration(400).attr("y2",h*0.56);
+  // connecting arrow
+  tr(g.append("line").attr("x1",cx).attr("y1",h*0.40).attr("x2",cx).attr("y2",h*0.40)
+   .attr("stroke",C.water).attr("stroke-width",1.5).attr("class","glow-water"),400,500)
+   .attr("y2",h*0.56);
   lbl(cx+92,h*0.49,"feeds plan →","ax-label",C.muted);
   // Simulation box
-  box(bx,h*0.56,bw,h*0.30,"rgba(27,110,125,0.08)",C.water).style("opacity",0).transition().delay(600).duration(500).style("opacity",1);
-  lbl(cx,h*0.62,"QUEUE SIMULATION","title-in-svg",C.waterDeep);
+  tr(box(bx,h*0.56,bw,h*0.30,"rgba(56,197,214,0.08)",C.water).style("opacity",0),500,600).style("opacity",1);
+  lbl(cx,h*0.62,"QUEUE SIMULATION","title-in-svg",C.water);
   lbl(cx,h*0.685,"Poisson arrivals → waiting time","ax-label",C.ink);
   lbl(cx,h*0.735,"measures: before vs after","ax-label",C.inkSoft);
   lbl(cx,h*0.805,"output:  public cost & wait time","val-label",C.good);
-  d3.select("#tag-2").text("Fig 04 · The two-engine model");
 }
 
-function c2_ports(){
-  const {svg,g,w,h}=freshG("chart-2");
+function c2_ports(g,w,h){
   const ports=[
     {n:"Indah Kiat",sel:true,note:"Scheme A"},
     {n:"Ciwandan",sel:true,note:"Scheme D"},
@@ -635,72 +811,70 @@ function c2_ports(){
     {n:"Pelabuhan Panjang",sel:false,note:"distant"},
     {n:"BBJ Muara Pilu",sel:true,note:"Sumatra pair"},
   ];
-  const m={t:50,l:30}; const rowH=(h-90)/ports.length;
-  g.append("text").attr("x",m.l).attr("y",30).attr("class","title-in-svg").text("Compatibility screen");
+  const m={t:66,l:30}; const rowH=(h-106)/ports.length;
+  g.append("text").attr("x",m.l).attr("y",48).attr("class","title-in-svg").text("Compatibility screen");
   ports.forEach((p,i)=>{
     const y=m.t+i*rowH+rowH/2;
     const row=g.append("g").style("opacity",0);
-    row.transition().delay(i*120).duration(400).style("opacity",1);
+    tr(row,400,i*120).style("opacity",1);
     row.append("circle").attr("cx",m.l+8).attr("cy",y).attr("r",7)
-      .attr("fill",p.sel?C.good:"none").attr("stroke",p.sel?C.good:C.muted).attr("stroke-width",1.5);
-    if(p.sel) row.append("path").attr("d",`M${m.l+4} ${y} l3 3 l6 -7`).attr("fill","none").attr("stroke","#fff").attr("stroke-width",1.6);
+      .attr("fill",p.sel?C.good:"none").attr("stroke",p.sel?C.good:C.muted).attr("stroke-width",1.5)
+      .attr("class",p.sel?"glow-good":null);
+    if(p.sel) row.append("path").attr("d",`M${m.l+4} ${y} l3 3 l6 -7`).attr("fill","none").attr("stroke",C.onBright).attr("stroke-width",1.8);
     row.append("text").attr("x",m.l+26).attr("y",y+5).attr("class","val-label")
       .attr("fill",p.sel?C.ink:C.muted).text(p.n);
     row.append("text").attr("x",w-30).attr("y",y+5).attr("text-anchor","end").attr("class","ax-label")
       .attr("fill",p.sel?C.good:C.danger).text((p.sel?"✓ ":"✗ ")+p.note);
+    row.append("line").attr("x1",m.l).attr("x2",w-30).attr("y1",y+rowH/2-4).attr("y2",y+rowH/2-4)
+      .attr("stroke",C.line).attr("stroke-width",i<ports.length-1?0.7:0);
   });
-  d3.select("#tag-2").text("Fig 05 · Five candidate ports, five schemes");
 }
 
-function c2_solution(){
-  const {svg,g,w,h}=freshG("chart-2");
+function c2_solution(g,w,h){
   const SR=Math.max(26,Math.min(36,w*0.07));   // source radius
-  const NR=Math.max(20,Math.min(28,w*0.055));   // node radius
+  const NR=Math.max(20,Math.min(28,w*0.055));  // node radius
   const src={x:w*0.17,y:h*0.5};
   const tx=w*0.46;
-  g.append("text").attr("x",24).attr("y",32).attr("class","title-in-svg").text("Load redistribution");
+  g.append("text").attr("x",24).attr("y",48).attr("class","title-in-svg").text("Load redistribution");
   // source bubble (Merak overloaded)
   const bg=g.append("g").attr("transform",`translate(${src.x},${src.y})`);
-  bg.append("circle").attr("r",0).attr("fill",C.danger).attr("opacity",0.92)
-    .transition().duration(600).attr("r",SR);
-  bg.append("text").attr("y",-3).attr("text-anchor","middle").attr("class","val-label").attr("fill","#fff").style("font-size","11px").text("MERAK");
-  bg.append("text").attr("y",13).attr("text-anchor","middle").attr("class","val-label").attr("fill","#fff").style("font-size","13px").text("1.15");
+  tr(bg.append("circle").attr("r",0).attr("fill",C.danger).attr("opacity",0.92).attr("class","glow-danger"),600).attr("r",SR);
+  bg.append("text").attr("y",-3).attr("text-anchor","middle").attr("class","val-label").attr("fill",C.onBright).style("font-size","11px").text("MERAK");
+  bg.append("text").attr("y",13).attr("text-anchor","middle").attr("class","val-label").attr("fill",C.onBright).style("font-size","13px").text("1.15");
   SCHEMES.forEach((s,i)=>{
     const ty=h*(0.24+i*0.26);
     const path=g.append("path")
       .attr("d",`M${src.x+SR} ${src.y} C ${(src.x+tx)/2} ${src.y}, ${(src.x+tx)/2} ${ty}, ${tx-NR-2} ${ty}`)
-      .attr("fill","none").attr("stroke",C.line).attr("stroke-width",2);
+      .attr("fill","none").attr("stroke",C.water).attr("stroke-width",2).attr("opacity",0.55);
     const L=path.node().getTotalLength();
-    path.attr("stroke-dasharray",L).attr("stroke-dashoffset",L)
-      .transition().delay(500+i*250).duration(700).attr("stroke-dashoffset",0)
-      .attr("stroke",C.water).attr("opacity",0.55);
+    path.attr("stroke-dasharray",L).attr("stroke-dashoffset",reduceMotion?0:L);
+    if(!reduceMotion) path.transition().delay(500+i*250).duration(700).ease(EASE).attr("stroke-dashoffset",0);
     const tg=g.append("g").attr("transform",`translate(${tx},${ty})`).style("opacity",0);
-    tg.transition().delay(900+i*250).duration(400).style("opacity",1);
-    tg.append("circle").attr("r",NR).attr("fill",C.good).attr("opacity",0.14).attr("stroke",C.good);
+    tr(tg,400,reduceMotion?0:900+i*250).style("opacity",1);
+    tg.append("circle").attr("r",NR).attr("fill",C.good).attr("opacity",0.14).attr("stroke",C.good).attr("class","glow-good");
     tg.append("text").attr("y",-3).attr("text-anchor","middle").attr("class","val-label").attr("fill",C.ink).style("font-size","13px").text(s.id);
     tg.append("text").attr("y",12).attr("text-anchor","middle").attr("class","ax-label").attr("fill",C.good).text(s.vc.toFixed(2));
     tg.append("text").attr("x",NR+10).attr("y",-2).attr("class","val-label").attr("fill",C.inkSoft).style("font-size","11px").text(s.port);
     tg.append("text").attr("x",NR+10).attr("y",13).attr("class","ax-label").attr("fill",C.muted).style("font-size","10px").text(s.classes);
   });
-  d3.select("#tag-2").text("Fig 06 · Merak 1.15 → three ports under 0.80");
 }
 
-/* ===== CHART 3 dispatcher (ledger) ===== */
-function c3_comp(){
-  const {svg,g,w,h}=freshG("chart-3");
+/* ===== CHART 3 (ledger) ===== */
+function c3_comp(g,w,h){
   const cx=w*0.5, cy=h*0.42, R=Math.min(w,h)*0.22;
   const data=[{k:"To shipping companies",v:14821275480,c:C.water},{k:"To port operators",v:2948480129,c:C.accent}];
   const total=17769755607;
   const pie=d3.pie().value(d=>d.v).sort(null);
-  const arc=d3.arc().innerRadius(R*0.56).outerRadius(R);
+  const arc=d3.arc().innerRadius(R*0.56).outerRadius(R).cornerRadius(2);
   const arcs=pie(data);
   g.append("text").attr("x",cx).attr("y",h*0.10).attr("text-anchor","middle").attr("class","title-in-svg").text("Where the Rp 17.77 B goes");
   const gg=g.append("g").attr("transform",`translate(${cx},${cy})`);
   gg.selectAll("path").data(arcs).enter().append("path").attr("fill",d=>d.data.c).attr("opacity",0.9)
-    .transition().duration(800).attrTween("d",function(d){const i=d3.interpolate({startAngle:d.startAngle,endAngle:d.startAngle},d);return t=>arc(i(t));});
+    .attr("class",(d,i)=>i===0?"glow-water":"glow-accent")
+    .transition().duration(reduceMotion?0:800).ease(EASE)
+    .attrTween("d",function(d){const i=d3.interpolate({startAngle:d.startAngle,endAngle:d.startAngle},d);return t=>arc(i(t));});
   gg.append("text").attr("text-anchor","middle").attr("y",-2).attr("class","val-label").style("font-size","13px").attr("fill",C.muted).text("TOTAL");
   gg.append("text").attr("text-anchor","middle").attr("y",18).attr("class","title-in-svg").style("font-size","19px").text("Rp 17.8 B");
-  // legend with %
   data.forEach((d,i)=>{
     const pct=Math.round(d.v/total*100);
     const ly=h*0.74+i*30;
@@ -708,14 +882,12 @@ function c3_comp(){
     g.append("text").attr("x",w*0.18+22).attr("y",ly).attr("class","val-label").attr("fill",C.ink).text(d.k);
     g.append("text").attr("x",w*0.82).attr("y",ly).attr("text-anchor","end").attr("class","val-label").attr("fill",d.c).text(pct+"%");
   });
-  d3.select("#tag-3").text("Fig 07 · Compensation split · Scheme E = Rp 0");
 }
 
-function c3_wait(){
-  const {svg,g,w,h}=freshG("chart-3");
-  const m={t:54,r:20,b:46,l:46};
+function c3_wait(g,w,h){
+  const m={t:72,r:20,b:46,l:46};
   const iw=w-m.l-m.r, ih=h-m.t-m.b;
-  const gg=g.attr("transform",`translate(${m.l},${m.t})`);
+  const gg=g.append("g").attr("transform",`translate(${m.l},${m.t})`);
   const x0=d3.scaleBand().domain(WAIT.map(d=>d.d)).range([0,iw]).padding(0.3);
   const x1=d3.scaleBand().domain(["before","after"]).range([0,x0.bandwidth()]).padding(0.12);
   const y=d3.scaleLinear().domain([0,390]).range([ih,0]);
@@ -726,35 +898,28 @@ function c3_wait(){
   });
   WAIT.forEach((d,i)=>{
     const grp=gg.append("g").attr("transform",`translate(${x0(d.d)},0)`);
-    // before
-    grp.append("rect").attr("x",x1("before")).attr("width",x1.bandwidth()).attr("y",ih).attr("height",0)
-      .attr("fill",C.danger).attr("opacity",d.op?0.9:0.4)
-      .transition().delay(i*60).duration(600).attr("y",y(d.before)).attr("height",ih-y(d.before));
-    // after
+    tr(grp.append("rect").attr("x",x1("before")).attr("width",x1.bandwidth()).attr("y",ih).attr("height",0).attr("rx",1.5)
+      .attr("fill",C.danger).attr("opacity",d.op?0.9:0.35),600,i*60)
+      .attr("y",y(d.before)).attr("height",ih-y(d.before));
     if(d.after!=null){
-      grp.append("rect").attr("x",x1("after")).attr("width",x1.bandwidth()).attr("y",ih).attr("height",0)
-        .attr("fill",C.good).attr("opacity",0.9)
-        .transition().delay(i*60+250).duration(600).attr("y",y(d.after)).attr("height",ih-y(d.after));
-      if(d.red) grp.append("text").attr("x",x0.bandwidth()/2).attr("y",y(d.before)-6).attr("text-anchor","middle")
-        .attr("class","ax-label").attr("fill",C.good).style("opacity",0).text("−"+d.red+"%")
-        .transition().delay(i*60+700).duration(300).style("opacity",1);
+      tr(grp.append("rect").attr("x",x1("after")).attr("width",x1.bandwidth()).attr("y",ih).attr("height",0).attr("rx",1.5)
+        .attr("fill",C.good).attr("opacity",0.9).attr("class","glow-good"),600,i*60+250)
+        .attr("y",y(d.after)).attr("height",ih-y(d.after));
+      if(d.red) tr(grp.append("text").attr("x",x0.bandwidth()/2).attr("y",y(d.before)-6).attr("text-anchor","middle")
+        .attr("class","ax-label").attr("fill",C.good).style("opacity",0).text("−"+d.red+"%"),300,i*60+700).style("opacity",1);
     }
     grp.append("text").attr("x",x0.bandwidth()/2).attr("y",ih+18).attr("text-anchor","middle").attr("class","ax-label").text(d.d);
   });
-  // legend
   [["Before",C.danger,0.66],["After",C.good,0.82]].forEach(([t,c,px])=>{
     gg.append("rect").attr("x",iw*px).attr("y",-20).attr("width",11).attr("height",11).attr("rx",2).attr("fill",c).attr("opacity",0.9);
     gg.append("text").attr("x",iw*px+16).attr("y",-11).attr("class","ax-label").attr("fill",C.ink).text(t);
   });
-  d3.select("#tag-3").text("Fig 08 · Peak wait cut from 5h+ to under 2h");
 }
 
-function c3_bcr(){
-  const {svg,g,w,h}=freshG("chart-3");
-  const m={t:60,r:30,b:50,l:60};
+function c3_bcr(g,w,h){
+  const m={t:74,r:30,b:50,l:60};
   const iw=w-m.l-m.r, ih=h-m.t-m.b;
-  const gg=g.attr("transform",`translate(${m.l},${m.t})`);
-  const cost=17.77, benefit=59.6;
+  const gg=g.append("g").attr("transform",`translate(${m.l},${m.t})`);
   const data=[
     {k:"Cost",seg:[{lab:"Compensation",v:17.77,c:C.accent}]},
     {k:"Public benefit",seg:[{lab:"Fuel saved (BCR 0.63)",v:11.16,c:C.warn},{lab:"Time saved (BCR 2.73)",v:48.45,c:C.good}]},
@@ -770,29 +935,23 @@ function c3_bcr(){
     let acc=0;
     d.seg.forEach((s,si)=>{
       const y0=acc, y1=acc+s.v; acc=y1;
-      gg.append("rect").attr("x",x(d.k)).attr("width",x.bandwidth())
-        .attr("y",ih).attr("height",0).attr("fill",s.c).attr("opacity",0.9)
-        .transition().delay(di*300+si*200).duration(600)
+      tr(gg.append("rect").attr("x",x(d.k)).attr("width",x.bandwidth())
+        .attr("y",ih).attr("height",0).attr("rx",2).attr("fill",s.c).attr("opacity",0.9),600,di*300+si*200)
         .attr("y",y(y1)).attr("height",y(y0)-y(y1));
-      gg.append("text").attr("x",x(d.k)+x.bandwidth()/2).attr("y",(y(y0)+y(y1))/2+4).attr("text-anchor","middle")
-        .attr("class","ax-label").attr("fill","#fff").style("opacity",0).text(s.v.toFixed(1))
-        .transition().delay(di*300+si*200+500).duration(300).style("opacity",1);
+      tr(gg.append("text").attr("x",x(d.k)+x.bandwidth()/2).attr("y",(y(y0)+y(y1))/2+4).attr("text-anchor","middle")
+        .attr("class","ax-label").attr("fill",C.onBright).style("opacity",0).text(s.v.toFixed(1)),300,di*300+si*200+500).style("opacity",1);
     });
     gg.append("text").attr("x",x(d.k)+x.bandwidth()/2).attr("y",ih+20).attr("text-anchor","middle").attr("class","ax-label").attr("fill",C.ink).text(d.k);
   });
-  // BCR call-out
-  gg.append("text").attr("x",x("Public benefit")+x.bandwidth()/2).attr("y",y(59.6)-14).attr("text-anchor","middle")
-    .attr("class","title-in-svg").attr("fill",C.good).style("opacity",0).style("font-size","18px").text("BCR 3.4×")
-    .transition().delay(1400).duration(400).style("opacity",1);
-  d3.select("#tag-3").text("Fig 09 · Benefit-to-cost ratio");
+  tr(gg.append("text").attr("x",x("Public benefit")+x.bandwidth()/2).attr("y",y(59.6)-14).attr("text-anchor","middle")
+    .attr("class","title-in-svg glow-good").attr("fill",C.good).style("opacity",0).style("font-size","18px").text("BCR 3.4×"),400,1400).style("opacity",1);
 }
 
-/* ===== CHART 4 dispatcher (sensitivity/durability) ===== */
-function c4_sens(){
-  const {svg,g,w,h}=freshG("chart-4");
-  const m={t:56,r:30,b:50,l:56};
+/* ===== CHART 4 (sensitivity/durability) ===== */
+function c4_sens(g,w,h){
+  const m={t:74,r:30,b:50,l:56};
   const iw=w-m.l-m.r, ih=h-m.t-m.b;
-  const gg=g.attr("transform",`translate(${m.l},${m.t})`);
+  const gg=g.append("g").attr("transform",`translate(${m.l},${m.t})`);
   const x=d3.scalePoint().domain(SENS.map(d=>d.vc.toFixed(2))).range([0,iw]).padding(0.4);
   const y=d3.scaleLinear().domain([0,70]).range([ih,0]);
   gg.append("text").attr("x",0).attr("y",-26).attr("class","title-in-svg").text("Implementation cost vs V/C standard");
@@ -801,29 +960,29 @@ function c4_sens(){
     gg.append("text").attr("x",-8).attr("y",y(t)+3).attr("text-anchor","end").attr("class","ax-label").text("Rp "+t+"B");
   });
   const line=d3.line().x(d=>x(d.vc.toFixed(2))).y(d=>y(d.cost)).curve(d3.curveMonotoneX);
-  const path=gg.append("path").datum(SENS).attr("fill","none").attr("stroke",C.water).attr("stroke-width",2.4).attr("d",line);
+  const path=gg.append("path").datum(SENS).attr("fill","none").attr("stroke",C.water).attr("stroke-width",2.4)
+    .attr("class","glow-water").attr("d",line);
   const L=path.node().getTotalLength();
-  path.attr("stroke-dasharray",L).attr("stroke-dashoffset",L).transition().duration(1100).attr("stroke-dashoffset",0);
+  path.attr("stroke-dasharray",L).attr("stroke-dashoffset",reduceMotion?0:L);
+  if(!reduceMotion) path.transition().duration(1100).ease(EASE).attr("stroke-dashoffset",0);
   gg.selectAll(".pt").data(SENS).enter().append("circle")
-    .attr("cx",d=>x(d.vc.toFixed(2))).attr("cy",d=>y(d.cost)).attr("r",0)
-    .attr("fill",d=>d.vc===0.8?C.accent:C.waterDeep)
-    .transition().delay((d,i)=>i*140+300).duration(300).attr("r",d=>d.vc===0.8?7:4.5);
-  // highlight chosen
+    .attr("cx",d=>x(d.vc.toFixed(2))).attr("cy",d=>y(d.cost)).attr("r",reduceMotion?4.5:0)
+    .attr("fill",d=>d.vc===0.8?C.accent:C.water)
+    .attr("class",d=>d.vc===0.8?"glow-accent":null)
+    .transition().delay((d,i)=>reduceMotion?0:i*140+300).duration(reduceMotion?0:300)
+    .attr("r",d=>d.vc===0.8?7:4.5);
   const chosen=SENS.find(d=>d.vc===0.8);
-  gg.append("text").attr("x",x("0.80")).attr("y",y(chosen.cost)-14).attr("text-anchor","middle")
-    .attr("class","val-label").attr("fill",C.accent).style("opacity",0).text("chosen · Rp 17.8B")
-    .transition().delay(1200).duration(400).style("opacity",1);
+  tr(gg.append("text").attr("x",x("0.80")).attr("y",y(chosen.cost)-14).attr("text-anchor","middle")
+    .attr("class","val-label").attr("fill",C.accent).style("opacity",0).text("chosen · Rp 17.8B"),400,1200).style("opacity",1);
   gg.selectAll(".xl").data(SENS).enter().append("text").attr("x",d=>x(d.vc.toFixed(2))).attr("y",ih+20)
     .attr("text-anchor","middle").attr("class","ax-label").text(d=>d.vc.toFixed(2));
   gg.append("text").attr("x",iw/2).attr("y",ih+40).attr("text-anchor","middle").attr("class","ax-label").attr("fill",C.muted).text("V/C standard (stricter ← → looser)");
-  d3.select("#tag-4").text("Fig 10 · The standard sets the price");
 }
 
-function c4_dura(){
-  const {svg,g,w,h}=freshG("chart-4");
-  const m={t:56,r:24,b:54,l:50};
+function c4_dura(g,w,h){
+  const m={t:74,r:24,b:54,l:50};
   const iw=w-m.l-m.r, ih=h-m.t-m.b;
-  const gg=g.attr("transform",`translate(${m.l},${m.t})`);
+  const gg=g.append("g").attr("transform",`translate(${m.l},${m.t})`);
   const x=d3.scaleBand().domain(DURA.map(d=>d.y)).range([0,iw]).padding(0.26);
   const y=d3.scaleLinear().domain([0,95]).range([ih,0]);
   gg.append("text").attr("x",0).attr("y",-26).attr("class","title-in-svg").text("Cost to hold the line, year by year");
@@ -834,59 +993,108 @@ function c4_dura(){
   DURA.forEach((d,i)=>{
     if(d.ok){
       const col = d.vc<=0.8 ? C.water : (d.vc<=0.9 ? C.warn : C.danger);
-      gg.append("rect").attr("x",x(d.y)).attr("width",x.bandwidth()).attr("y",ih).attr("height",0)
-        .attr("fill",col).attr("opacity",0.88)
-        .transition().delay(i*80).duration(600).attr("y",y(d.cost)).attr("height",ih-y(d.cost));
-      gg.append("text").attr("x",x(d.y)+x.bandwidth()/2).attr("y",y(d.cost)-6).attr("text-anchor","middle")
-        .attr("class","ax-label").attr("fill",col).style("opacity",0).text(d.vc.toFixed(2))
-        .transition().delay(i*80+500).duration(300).style("opacity",1);
+      tr(gg.append("rect").attr("x",x(d.y)).attr("width",x.bandwidth()).attr("y",ih).attr("height",0).attr("rx",2)
+        .attr("fill",col).attr("opacity",0.88),600,i*80)
+        .attr("y",y(d.cost)).attr("height",ih-y(d.cost));
+      tr(gg.append("text").attr("x",x(d.y)+x.bandwidth()/2).attr("y",y(d.cost)-6).attr("text-anchor","middle")
+        .attr("class","ax-label").attr("fill",col).style("opacity",0).text(d.vc.toFixed(2)),300,i*80+500).style("opacity",1);
     } else {
       // the wall: 2033 not possible
-      gg.append("rect").attr("x",x(d.y)).attr("width",x.bandwidth()).attr("y",0).attr("height",ih)
-        .attr("fill",C.danger).attr("opacity",0).attr("stroke",C.danger).attr("stroke-dasharray","4 4")
-        .transition().delay(i*80).duration(500).attr("opacity",0.12);
-      gg.append("text").attr("x",x(d.y)+x.bandwidth()/2).attr("y",ih/2).attr("text-anchor","middle")
-        .attr("class","val-label").attr("fill",C.danger).style("opacity",0)
-        .text("NOT").transition().delay(i*80+300).duration(300).style("opacity",1);
-      gg.append("text").attr("x",x(d.y)+x.bandwidth()/2).attr("y",ih/2+16).attr("text-anchor","middle")
-        .attr("class","val-label").attr("fill",C.danger).style("opacity",0)
-        .text("POSSIBLE").transition().delay(i*80+300).duration(300).style("opacity",1);
+      tr(gg.append("rect").attr("x",x(d.y)).attr("width",x.bandwidth()).attr("y",0).attr("height",ih)
+        .attr("fill",C.danger).attr("opacity",0).attr("stroke",C.danger).attr("stroke-dasharray","4 4"),500,i*80)
+        .attr("opacity",0.14);
+      tr(gg.append("text").attr("x",x(d.y)+x.bandwidth()/2).attr("y",ih/2).attr("text-anchor","middle")
+        .attr("class","val-label glow-danger").attr("fill",C.danger).style("opacity",0).text("NOT"),300,i*80+300).style("opacity",1);
+      tr(gg.append("text").attr("x",x(d.y)+x.bandwidth()/2).attr("y",ih/2+16).attr("text-anchor","middle")
+        .attr("class","val-label glow-danger").attr("fill",C.danger).style("opacity",0).text("POSSIBLE"),300,i*80+300).style("opacity",1);
     }
     gg.append("text").attr("x",x(d.y)+x.bandwidth()/2).attr("y",ih+18).attr("text-anchor","middle")
       .attr("class","ax-label").attr("fill",d.ok?C.muted:C.danger).text("'"+String(d.y).slice(2));
   });
-  // note about loosening standard
   gg.append("text").attr("x",iw).attr("y",ih+40).attr("text-anchor","end").attr("class","ax-label").attr("fill",C.muted)
     .text("bar colour = required V/C standard, 0.80 → 1.00");
-  d3.select("#tag-4").text("Fig 11 · The policy expires around 2033");
 }
 
 /* ---------- DISPATCH MAP ---------- */
 const RENDER = {
-  hook:c1_hook, vc:c1_vc, mix:c1_mix,
-  method:c2_method, ports:c2_ports, solution:c2_solution,
-  comp:c3_comp, wait:c3_wait, bcr:c3_bcr,
-  sens:c4_sens, dura:c4_dura,
+  hook:    {svg:"chart-1", tag:"tag-1", fig:"Fig 01 · The crossing",                              draw:c1_hook},
+  vc:      {svg:"chart-1", tag:"tag-1", fig:"Fig 02 · Daily V/C ratio, 2025 Eid projection",       draw:c1_vc},
+  mix:     {svg:"chart-1", tag:"tag-1", fig:"Fig 03 · Composition of the 27,964-SMP peak",         draw:c1_mix},
+  method:  {svg:"chart-2", tag:"tag-2", fig:"Fig 04 · The two-engine model",                       draw:c2_method},
+  ports:   {svg:"chart-2", tag:"tag-2", fig:"Fig 05 · Five candidate ports, five schemes",         draw:c2_ports},
+  solution:{svg:"chart-2", tag:"tag-2", fig:"Fig 06 · Merak 1.15 → three ports under 0.80",        draw:c2_solution},
+  comp:    {svg:"chart-3", tag:"tag-3", fig:"Fig 07 · Compensation split · Scheme E = Rp 0",       draw:c3_comp},
+  wait:    {svg:"chart-3", tag:"tag-3", fig:"Fig 08 · Peak wait cut from 5h+ to under 2h",         draw:c3_wait},
+  bcr:     {svg:"chart-3", tag:"tag-3", fig:"Fig 09 · Benefit-to-cost ratio",                      draw:c3_bcr},
+  sens:    {svg:"chart-4", tag:"tag-4", fig:"Fig 10 · The standard sets the price",                draw:c4_sens},
+  dura:    {svg:"chart-4", tag:"tag-4", fig:"Fig 11 · The policy expires around 2033",             draw:c4_dura},
 };
 let current = null;
+
+/* ---------- COUNT-UP NUMBERS ---------- */
+function countUp(el){
+  if(el.dataset.done) return;
+  el.dataset.done="1";
+  const target=parseFloat(el.dataset.count), dec=+(el.dataset.decimals||0);
+  if(reduceMotion){ el.textContent=target.toFixed(dec); return; }
+  const dur=1300, t0=performance.now();
+  const ease=t=>1-Math.pow(1-t,3);
+  (function tick(now){
+    const p=Math.min(1,(now-t0)/dur);
+    el.textContent=(target*ease(p)).toFixed(dec);
+    if(p<1) requestAnimationFrame(tick);
+  })(t0);
+}
+
+/* ---------- ACTIVATION ---------- */
+const steps = Array.from(document.querySelectorAll(".step"));
+const stepOrder = steps.map(s=>s.dataset.step);
 
 function activate(step){
   if(step===current) return;
   current=step;
-  if(RENDER[step]) RENDER[step]();
+  const r=RENDER[step];
+  if(r){
+    showScene(r.svg, (g,w,h)=>r.draw(g,w,h));
+    const tagEl=document.getElementById(r.tag);
+    tagEl.style.opacity=0;
+    setTimeout(()=>{ tagEl.textContent=r.fig; tagEl.style.opacity=1; }, reduceMotion?0:200);
+  }
+  steps.forEach(s=>s.classList.toggle("is-active", s.dataset.step===step));
+  const active=steps.find(s=>s.dataset.step===step);
+  if(active) active.querySelectorAll("[data-count]").forEach(countUp);
+  document.querySelectorAll("#chapnav button").forEach((b,i)=>
+    b.classList.toggle("on", stepOrder[i]===step));
 }
+
+/* ---------- CHAPTER DOT NAV ---------- */
+const chapnav=document.getElementById("chapnav");
+steps.forEach(s=>{
+  const label=s.querySelector(".num").textContent.trim();
+  const btn=document.createElement("button");
+  btn.dataset.label=label;
+  btn.setAttribute("aria-label","Go to chapter "+label);
+  btn.addEventListener("click",()=>{
+    if(window.__lenis) window.__lenis.scrollTo(s,{offset:0,duration:1.4});
+    else s.scrollIntoView({behavior:reduceMotion?"auto":"smooth"});
+  });
+  chapnav.appendChild(btn);
+});
 
 /* ---------- OBSERVER ----------
    A thin focus band in the vertical middle of the viewport decides the active
    step. Among everything currently touching the band we pick the step whose
    centre is closest to the viewport centre — this stops the chart flickering
    between two steps when they briefly overlap during a fast scroll. */
-const steps = Array.from(document.querySelectorAll(".step"));
 const visible = new Set();
+/* On phones the chart panel pins to the top 52vh, so the focus band sits in
+   the visible text region below it instead of the viewport centre. */
+const isMobile = window.matchMedia("(max-width:900px)").matches;
+const FOCUS = isMobile ? 0.74 : 0.5;
 
 function pickActive(){
   if(!visible.size) return;
-  const mid = window.innerHeight / 2;
+  const mid = window.innerHeight * FOCUS;
   let best=null, bestDist=Infinity;
   visible.forEach(el=>{
     const r = el.getBoundingClientRect();
@@ -902,24 +1110,46 @@ const obs = new IntersectionObserver((entries)=>{
     else visible.delete(e.target);
   });
   pickActive();
-},{rootMargin:"-45% 0px -45% 0px", threshold:0});
+},{rootMargin:isMobile?"-64% 0px -16% 0px":"-45% 0px -45% 0px", threshold:0});
 
 steps.forEach(s=>obs.observe(s));
 
-/* ---------- SMOOTH SCROLL (Lenis) + PROGRESS BAR ---------- */
+/* interludes fade in once when they enter the viewport */
+const interObs = new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add("is-in"); interObs.unobserve(e.target); } });
+},{rootMargin:"0px 0px -22% 0px", threshold:0});
+document.querySelectorAll(".interlude").forEach(el=>interObs.observe(el));
+
+/* ---------- SMOOTH SCROLL (Lenis) + PROGRESS + PARALLAX ---------- */
 const progressEl = document.getElementById("progress");
-const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-const setProgress = p => { progressEl.style.width = (Math.max(0,Math.min(1,p))*100).toFixed(2)+"%"; };
+const setProgress = p => { progressEl.style.transform = "scaleX("+Math.max(0,Math.min(1,p))+")"; };
+const heroSea = document.querySelector(".hero-sea");
+const vizInners = Array.from(document.querySelectorAll(".viz-inner"));
+
+function parallax(scrollY){
+  // hero layers drift up slightly slower than the page
+  if(scrollY < window.innerHeight*1.2){
+    heroSea.style.transform = "translateY("+(scrollY*0.18)+"px)";
+  }
+  // very gentle float on the sticky chart panels
+  for(const el of vizInners){
+    const r = el.getBoundingClientRect();
+    if(r.bottom<0 || r.top>window.innerHeight) continue;
+    const off = ((r.top+r.bottom)/2 - window.innerHeight/2) / window.innerHeight;
+    el.style.transform = "translateY("+(off*-10).toFixed(2)+"px)";
+  }
+}
 
 if(window.Lenis && !reduceMotion){
   const lenis = new Lenis({
-    duration: 1.05,                                          // momentum length (s)
+    duration: 1.15,                                          // momentum length (s)
     easing: t => Math.min(1, 1.001 - Math.pow(2, -10 * t)),  // expo-out, natural settle
     smoothWheel: true,
     wheelMultiplier: 0.9,                                    // slightly calmer wheel
     touchMultiplier: 1.4,
   });
-  lenis.on("scroll", ({ progress }) => setProgress(progress));
+  window.__lenis = lenis;
+  lenis.on("scroll", ({ scroll, progress }) => { setProgress(progress); parallax(scroll); });
   function raf(time){ lenis.raf(time); requestAnimationFrame(raf); }  // one frame-aligned loop
   requestAnimationFrame(raf);
 

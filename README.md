@@ -14,10 +14,16 @@ GitHub Pages: enabled on this repo (see the repo's Pages settings for the URL).
 ## Tech
 
 - Single self-contained `index.html` — no build step.
+- Dark "night chart" theme: deep navy, glowing teal water, amber accents.
 - [D3.js](https://d3js.org/) for the sticky, scroll-synced visualizations.
-- [Lenis](https://github.com/darkroomengineering/lenis) for smooth, RAF-driven scrolling.
+- Scene-manager chart transitions: each step renders into its own SVG layer and
+  crossfades with the previous one, so the panel never blanks between steps.
+- [Lenis](https://github.com/darkroomengineering/lenis) for smooth, RAF-driven scrolling,
+  plus a scroll-linked progress bar, hero parallax, and gentle panel float.
 - `IntersectionObserver` (centre-of-viewport focus band) to sync narrative steps with charts.
-- Respects `prefers-reduced-motion` (smooth scroll + heavy animation disabled).
+- Chapter dot navigation (right rail, desktop) and count-up key numbers.
+- Animated hero: drifting wave contours, coast silhouettes, a ferry commuting the strait.
+- Respects `prefers-reduced-motion` (smooth scroll, parallax + heavy animation disabled).
 
 ## Develop
 
